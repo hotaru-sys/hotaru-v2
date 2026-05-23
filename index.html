@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>hotaru | Trial v2</title>
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NQ2CZMJXCS"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        // SupabaseのセッションからUser IDを取得してGA4に紐付け（SHA-256で匿名化）
+        async function setHashedUserId() {
+            const sbAuthToken = localStorage.getItem('sb-ubnqbpsbtmdplmlivxbj-auth-token');
+            let userId = null;
+            if (sbAuthToken) {
+                try { userId = JSON.parse(sbAuthToken).user?.id; } catch (e) { }
+            }
+
+            if (userId) {
+                const msgUint8 = new TextEncoder().encode(userId);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashedId = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                gtag('config', 'G-NQ2CZMJXCS', { 'user_id': hashedId });
+            } else {
+                gtag('config', 'G-NQ2CZMJXCS');
+            }
+        }
+        setHashedUserId();
+    </script>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: rgba(255, 255, 255, 0.9);
+            font-family: "Hiragino Mincho ProN", "YuMincho", serif;
+            line-height: 2.3;
+            letter-spacing: 0.12em;
+            overflow-x: hidden;
+        }
+
+        .bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: #000;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 0 25px 120px;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-left {
+            text-align: left;
+            padding: 0 10px;
+        }
+
+        .v-line {
+            width: 1px;
+            height: 40px;
+            background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.4), transparent);
+            margin: 15px auto;
+        }
+
+        /* フェードインアニメーション */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 2s ease-out, transform 2s ease-out;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .delay-entry {
+            transition-delay: 0.3s;
+        }
+
+        .section-hero {
+            margin-bottom: 60px;
+        }
+
+        .section-content {
+            margin-bottom: 30px;
+        }
+
+        .section-plan {
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 1.1rem;
+            font-weight: 400;
+            letter-spacing: 0.6em;
+            text-indent: 0.6em;
+            margin: 15px 0 30px;
+            color: #fff;
+            text-align: center;
+        }
+
+        .main-copy {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 35px;
+            color: #fff;
+            display: block;
+        }
+
+        .middle-copy {
+            font-size: 1.05rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 35px;
+        }
+
+        .sub-copy {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .section-title-underlined {
+            font-size: 1rem;
+            margin-bottom: 20px;
+            color: #fff;
+            letter-spacing: 0.2em;
+            display: inline-block;
+            border-bottom: 0.5px solid rgba(255, 255, 255, 0.3);
+            padding-bottom: 4px;
+            width: auto;
+            font-weight: bold;
+        }
+
+        .price-plan-box {
+            margin: 60px auto 40px;
+            text-align: center;
+        }
+
+        .price-plan-btn {
+            display: inline-block;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            padding: 14px 40px;
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.9rem;
+            letter-spacing: 0.15em;
+            transition: all 0.5s;
+        }
+
+        .price-plan-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        .quote-text {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin: 40px 0;
+            line-height: 2.2;
+            text-align: center;
+        }
+
+        .nagori-balancer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 30px 0;
+        }
+
+        .nagori-text {
+            margin: 60px 0 !important;
+            font-weight: 600;
+        }
+
+        .btn-lamp {
+            display: inline-block;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            padding: 16px 45px;
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.9rem;
+            letter-spacing: 0.2em;
+            transition: 0.4s;
+            margin: 30px 0 50px;
+        }
+
+        .bridge-message {
+            margin-top: 80px;
+            padding-top: 60px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+        }
+
+        /* PC限定の案内オーバーレイ */
+        #pc-notice {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 9999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+            overflow-y: auto;
+        }
+
+        @media (min-width: 769px) {
+            #pc-notice {
+                display: flex;
+            }
+            /* PCオーバーレイ内では「この場所に辿り着いた方へ」を常時表示 */
+            #gift-welcome-pc {
+                display: block !important;
+            }
+        }
+
+        .qr-container {
+            margin-bottom: 20px;
+            animation: pcFadeIn 2s ease-out;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 40px;
+        }
+
+        .qr-container img {
+            width: 220px;
+            height: auto;
+            display: block;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.05);
+        }
+
+        /* 蛍の光の演出 */
+        .hotaru-particle {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            background: #fff;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 500;
+            filter: blur(2px);
+            box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.4);
+            opacity: 0;
+        }
+
+        @keyframes firefly-move {
+            0% {
+                transform: translate(0, 0);
+                opacity: 0;
+            }
+
+            20% {
+                opacity: 0.6;
+            }
+
+            50% {
+                transform: translate(100px, -50px);
+                opacity: 0.3;
+            }
+
+            80% {
+                opacity: 0.6;
+            }
+
+            100% {
+                transform: translate(50px, -150px);
+                opacity: 0;
+            }
+        }
+
+        .pc-message {
+            font-size: 1.05rem;
+            color: #fff;
+            margin-bottom: 20px;
+            line-height: 1.8;
+            letter-spacing: 0.1em;
+            font-weight: 400;
+            animation: pcFadeIn 2.5s ease-out;
+        }
+
+        .pc-continue-btn {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+            text-decoration: underline;
+            cursor: pointer;
+            background: none;
+            border: none;
+            margin-top: 20px;
+            transition: 0.3s;
+            animation: pcFadeIn 3s ease-out;
+        }
+
+        .pc-continue-btn:hover {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .trial-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.95) 80%, transparent 100%);
+            padding: 30px 0 50px;
+            z-index: 1000;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 0 10px;
+        }
+
+        .nav-item {
+            color: rgba(255, 255, 255, 0.85);
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 5px;
+            transition: color 0.3s;
+            text-align: center;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        .nav-item:active,
+        .nav-item:hover {
+            color: #fff;
+        }
+
+        .nav-name {
+            font-size: 0.9rem;
+            letter-spacing: 0.15em;
+            font-weight: 500;
+        }
+
+        .nav-sub {
+            font-size: 0.65rem;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0.05em;
+        }
+
+        .nav-divider {
+            width: 1px;
+            height: 35px;
+            background: rgba(255, 255, 255, 0.2);
+            margin: auto 0;
+        }
+
+        .footer-notice-box {
+            margin: 40px 10px;
+            padding: 35px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 2px;
+        }
+
+        .ai-disclaimer {
+            font-size: 0.65rem;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 25px;
+            line-height: 1.8;
+            letter-spacing: 0.05em;
+        }
+
+        .footer-links {
+            margin-bottom: 25px;
+        }
+
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.6) !important;
+            text-decoration: none;
+            font-size: 0.75rem;
+            margin: 0 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 2px;
+            transition: 0.4s;
+        }
+
+        .footer-links a:hover {
+            color: #fff !important;
+            border-bottom-color: #fff;
+        }
+
+        .contact-mail {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.9);
+            letter-spacing: 0.12em;
+            transition: opacity 0.3s;
+        }
+
+        .contact-mail:hover {
+            opacity: 0.7;
+        }
+
+        .copyright {
+            margin-top: 40px;
+            font-size: 0.65rem;
+            color: rgba(255, 255, 255, 0.2);
+            letter-spacing: 0.2em;
+        }
+
+        @keyframes pcFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* お裾分けメッセージ 共通スタイル */
+        #gift-welcome-pc,
+        #gift-welcome-mobile {
+            display: none; /* 初期状態は非表示。JSで制御 */
+            color: rgba(255, 255, 255, 0.95) !important;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 15px;
+            border-radius: 2px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            animation: glow 3s infinite alternate;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        @keyframes glow {
+            from { border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 0 5px rgba(255, 255, 255, 0.05); }
+            to { border-color: rgba(255, 255, 255, 0.4); box-shadow: 0 0 15px rgba(255, 255, 255, 0.1); }
+        }
+
+        #gift-welcome-pc {
+            font-size: 1.2rem;
+            font-weight: 600;
+            width: 80%;
+            max-width: 600px;
+        }
+
+        #gift-welcome-mobile {
+            font-size: 0.82rem;
+            line-height: 1.6;
+            padding: 10px 12px;
+            margin: 0 auto 15px;
+            border-radius: 4px;
+            width: 92%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="pc-notice">
+        <div id="gift-welcome-pc" style="margin-bottom:15px;">
+            【この場所に辿り着いた方へ】<br>
+            <span style="font-size:0.85rem; font-weight:400; line-height:1.6;">
+                ここは、誰かに話すほどでもない<br>
+                ちょっと疲れた夜のための居場所です。
+            </span>
+        </div>
+        <div class="pc-message">
+            hotaruは、手のひらの中で灯す居場所です。<br>
+            まずは、スマートフォンでこちらを読み取ってお入りください。
+        </div>
+        <div class="qr-container">
+            <img src="qr_note.png" alt="QR Code"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div
+                style="width:220px; height:220px; background:#1a253a; display:none; align-items:center; justify-content:center; color:rgba(255,255,255,0.4); font-size:0.8rem; border: 1px dashed rgba(255,255,255,0.2);">
+                QRコードを設置
+            </div>
+        </div>
+        <!-- PC向けお裾分けリンク -->
+        <div style="margin-bottom: 10px;">
+            <button id="issue-gift-btn-pc" style="background:none; border:1px solid rgba(255,255,255,0.6); color:#fff; padding:10px 20px; border-radius:20px; font-size:0.85rem; cursor:pointer; transition:0.3s; letter-spacing:0.1em;">
+                お裾分け用URLを発行する
+            </button>
+            <div id="gift-url-message-pc" style="display:none; color:rgba(255,255,255,0.7); font-size:0.75rem; margin-top:10px;">URLをコピーしました、大切な人に送ってください</div>
+        </div>
+        <button class="pc-continue-btn" onclick="document.getElementById('pc-notice').style.display='none';">
+            そのままPCで閲覧する
+        </button>
+    </div>
+
+    <div class="bg-overlay"></div>
+    <nav class="trial-nav">
+        <div class="nav-inner">
+            <a href="https://hotaru-light.jp/isolation_trial" class="nav-item" onclick="gtag('event', 'click_光を落としてゆく', { 'event_category': 'navigation', 'event_label': 'isolation_link' });">
+                <span class="nav-name">光を落としてゆく</span>
+                <span class="nav-sub">そっと今日を閉じる</span>
+            </a>
+            <div class="nav-divider"></div>
+            <a href="https://hotaru-light.jp/hotaru_trial" class="nav-item">
+                <span class="nav-name">光が寄り添う</span>
+                <span class="nav-sub">光と共にいる</span>
+            </a>
+            <div class="nav-divider"></div>
+            <a href="talk_trial.html" class="nav-item">
+                <span class="nav-name">言葉にする</span>
+                <span class="nav-sub">静かに対話する</span>
+            </a>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="v-line"></div>
+
+        <div class="fade-in text-center section-hero">
+            <h1>hotaru</h1>
+            <!-- お裾分け経由のメッセージ（初回のみ表示・2回目以降非表示） -->
+            <div id="gift-welcome-mobile">
+                <span style="font-weight:bold; font-size:1.15rem;">【この場所を贈られた方へ】</span><br>
+                ここは、誰かに話すほどでもない<br>
+                ちょっと疲れた夜のための居場所です。
+            </div>
+            <p class="main-copy">ちゃんと疲れる。<br>だって人間ですから。</p>
+        </div>
+
+        <div class="fade-in delay-entry text-center section-content">
+            <p class="middle-copy">
+                夜、頭が止まらない。<br>
+                でも誰かに話すほどのことでもない。<br>
+                何かしなきゃとは思うけど、<br>何もしたくない。<br><br>
+                そんな時のために。
+            </p>
+
+            <div class="nagori-balancer">
+                <p class="middle-copy">
+                    応援しない。成長を求めない。<br>
+                    使い続けなくてもいい。<br>
+                    戻ってこれればいい。<br><br>
+
+                    少しの言葉と余韻を残したまま終えたい夜もある。<br>
+                    言葉すら何も残さず閉じたい夜もある。<br><br>
+
+                    言葉にした内容も、<br>
+                    消していった夜も、<br>
+                    眺めるだけだった夜も、<br>
+                    それも今日という一つの夜のあり方です。
+                </p>
+
+                <p class="sub-copy">
+                    hotaruには二つの過ごし方を用意しています。<br><br>
+                    どちらも眺めるだけでもいいし、触ってもいい。
+                </p>
+
+                <div style="text-align: center; width: 100%;">
+                    <p class="sub-copy nagori-text" style="color:#fff; margin-bottom: 0;">
+                        「光を落としてゆく」と「光が寄り添う」
+                    </p>
+                    <p class="sub-copy" style="margin-top: 10px; margin-bottom: 20px; line-height: 1.8;">
+                        <strong>光を落としてゆく</strong>−その日の気分で、そっと今日を閉じる。−<br>
+                        <strong>光が寄り添う</strong>−ただ、そこにあってくれればいい。–
+                    </p>
+                </div>
+
+                <p class="sub-copy">
+                    触れていくと、AIであるhotaruがそっと会話するかを尋ねてきます。<br>
+                    そのまま今日という夜を閉じてもいい。<br><br>
+                    AIとの静かな対話に進んでもいい。<br><br>
+                    「光が寄り添う」だけは、<br>
+                    一度開けば、電波がなくても光だけは、ともります。<br><br>
+                    今夜ここに…
+                </p>
+            </div>
+        </div>
+
+        <div class="fade-in text-center">
+            <a href="/line_bridge.html" class="btn-lamp"
+                onclick="gtag('event', 'click_hotaruを灯す', { event_category: 'index', event_label: 'line_link' });">
+                hotaruを灯す
+            </a>
+        </div>
+        <div class="fade-in delay-entry text-center" style="margin-bottom: 40px;">
+            <p class="sub-copy">どちらでも、あなたの夜には変わりなく灯ります。</p>
+        </div>
+
+        <div class="fade-in delay-entry text-left section-plan">
+            <p class="section-title-underlined">一晩のともしび（無料）</p>
+            <p class="sub-copy">
+                その夜だけの、まっさらな場所。<br>
+                前の夜は持ち込まない。次の夜には持ち越さない。<br>
+                毎回、はじめての夜として迎えます。
+            </p>
+        </div>
+
+        <div class="fade-in delay-entry text-left section-plan">
+            <p class="section-title-underlined">続く夜のともしび（有料）</p>
+            <p class="sub-copy">
+                自分が残してきた言葉を、見返せる場所。<br>
+                誰かに見せるためじゃない。それはただ、自分だけが知っている痕跡。
+            </p>
+        </div>
+
+        <div class="fade-in delay-entry quote-text">
+            「続けることが目的ではありません。また来たくなった夜に、ここがある。」
+        </div>
+
+        <div class="fade-in delay-entry price-plan-box">
+            <a href="price_plan_trial.html" class="price-plan-btn">夜の過ごし方（料金表）へ</a>
+        </div>
+
+        <div class="fade-in delay-entry text-left section-plan">
+            <p class="section-title-underlined">そっと手渡すともしび</p>
+            <p class="sub-copy">
+                声の掛け方がわからない人にそっと送れます。<br>
+                そして、渡してくれたあなたと、その人の夜を少しの期間そっと寄り添います。
+
+            <div style="margin-top:20px; text-align:center;">
+                <button id="issue-gift-btn"
+                    style="background:none; border:1px solid rgba(255,255,255,0.6); color:#fff; padding:10px 20px; border-radius:20px; font-size:0.85rem; cursor:pointer; transition:0.3s; letter-spacing:0.1em;">
+                    お裾分け用URLを発行する
+                </button>
+                <div id="gift-url-message" style="display:none; color:rgba(255,255,255,0.7); font-size:0.75rem; margin-top:10px;">
+                    URLをコピーしました、大切な人に送ってください</div>
+            </div>
+            </p>
+        </div>
+
+        <div class="fade-in delay-entry bridge-message">
+            <p>最後は人が人を繋ぐので、</p>
+            <p>そこまでの居場所や、</p>
+            <p>橋渡しの場でありたい。</p>
+            <p style="margin-top: 25px; color: #fff; letter-spacing: 0.8em; text-indent: 0.8em;">hotaru</p>
+        </div>
+
+        <footer style="margin-top: 80px; text-align: center; padding-bottom: 60px;">
+            <div class="footer-notice-box fade-in">
+                <p class="ai-disclaimer">
+                    ※対話機能は生成AIによるものであり、人間のカウンセラーが対応するものではありません。
+                </p>
+                <div class="footer-links">
+                    <a href="terms.html">利用規約</a>
+                    <a href="privacy.html">プライバシーポリシー</a>
+                </div>
+                <div class="contact-info">
+                    <span class="contact-mail">contact：hotaru.light.jp@gmail.com</span>
+                </div>
+            </div>
+            <div class="copyright fade-in">© hotaru. All rights reserved.</div>
+        </footer>
+    </div>
+    <script>
+        // 既存のフェードイン監視
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+        // 蛍の光を生成する
+        function createFirefly() {
+            const firefly = document.createElement('div');
+            firefly.className = 'hotaru-particle';
+            const startX = Math.random() * window.innerWidth;
+            const startY = Math.random() * window.innerHeight;
+            firefly.style.left = startX + 'px';
+            firefly.style.top = startY + 'px';
+            const duration = 15 + Math.random() * 10;
+            firefly.style.animation = `firefly-move ${duration}s ease-in-out infinite`;
+            document.body.appendChild(firefly);
+            setTimeout(() => {
+                firefly.remove();
+                createFirefly();
+            }, duration * 1000);
+        }
+
+        for (let i = 0; i < 12; i++) {
+            setTimeout(createFirefly, Math.random() * 5000);
+        }
+
+        // QRコード切り替え
+        function updatePCQR() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const ref = urlParams.get('ref');
+            const qrImg = document.querySelector('.qr-container img');
+            if (!qrImg) return;
+            const qrTable = {
+                'note': 'qr_note.png',
+                'x': 'qr_x.png',
+                'insta': 'qr_insta.png',
+                'threads': 'qr_threads.png',
+                'tiktok': 'qr_tiktok.png'
+            };
+            if (ref && qrTable[ref]) {
+                qrImg.src = qrTable[ref];
+            } else {
+                qrImg.src = 'qr_note.png';
+            }
+        }
+
+        // DOMContentLoaded
+        window.addEventListener('DOMContentLoaded', () => {
+            updatePCQR();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('ref') === 'gift') {
+                sessionStorage.setItem('referral_source', 'gift');
+            }
+
+            // -----------------------------------------------
+            // モバイル「この場所を贈られた方へ」：
+            //   初回訪問のみ表示し、localStorageにフラグを立てる
+            //   2回目以降は非表示（通常LPモード）
+            // -----------------------------------------------
+            const mobileGift = document.getElementById('gift-welcome-mobile');
+            const pcGift = document.getElementById('gift-welcome-pc');
+            
+            if (urlParams.get('ref') === 'gift') {
+                // ギフト経由の場合のみ表示
+                if (mobileGift) mobileGift.style.display = 'block';
+                if (pcGift) pcGift.style.display = 'block';
+                
+                // 初回フラグをセット（必要に応じて他で利用可能）
+                localStorage.setItem('hotaru_visited', '1');
+            } else {
+                // 通常流入の場合は非表示を維持
+                if (mobileGift) mobileGift.style.display = 'none';
+                if (pcGift) pcGift.style.display = 'none';
+            }
+
+            // お裾分けURL発行ロジック（モバイル用）
+            const issueBtn = document.getElementById('issue-gift-btn');
+            if (issueBtn) {
+                issueBtn.addEventListener('click', () => {
+                    const currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.set('ref', 'gift');
+                    
+                    const shareText = `突然だけど\n誰かに話すほどでもないけど、ちょっと疲れた時のためのミニアプリを贈ります。\n上手く言えないけど、よかったら使ってみて\n\n${currentUrl.toString()}`;
+                    
+                    navigator.clipboard.writeText(shareText).then(() => {
+                        const msg = document.getElementById('gift-url-message');
+                        msg.style.display = 'block';
+                        issueBtn.innerText = 'コピー完了';
+                        setTimeout(() => {
+                            msg.style.display = 'none';
+                            issueBtn.innerText = 'お裾分け用URLを発行する';
+                        }, 3000);
+                    });
+                });
+            }
+
+            // お裾分けURL発行ロジック（PC用）
+            const issueBtnPc = document.getElementById('issue-gift-btn-pc');
+            if (issueBtnPc) {
+                issueBtnPc.addEventListener('click', () => {
+                    const currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.set('ref', 'gift');
+                    
+                    const shareText = `誰かに話すほどでもない、ちょっと疲れた夜のための居場所「hotaru」を贈ります。\nもしよかったら、ここで一息ついてみてください。\n\n${currentUrl.toString()}`;
+                    
+                    navigator.clipboard.writeText(shareText).then(() => {
+                        const msgPc = document.getElementById('gift-url-message-pc');
+                        msgPc.style.display = 'block';
+                        issueBtnPc.innerText = 'コピー完了';
+                        setTimeout(() => {
+                            msgPc.style.display = 'none';
+                            issueBtnPc.innerText = 'お裾分け用URLを発行する';
+                        }, 3000);
+                    });
+                });
+            }
+        });
+    </script>
+    <script src="gift_logging_script.js"></script>
+</body>
+
+</html>

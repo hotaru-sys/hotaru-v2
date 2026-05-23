@@ -2,7 +2,7 @@ const CACHE_NAME = 'hotaru-pwa-v2';
 const ASSETS_TO_CACHE = [
   './',
   './hotaru_trial.html',
-  './index_trial.html',
+  './index.html',
   './manifest.json',
   './sw.js',
   './background_hotaru.jpg',
