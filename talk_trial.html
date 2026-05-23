@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>talk｜trial</title>
+  <meta name="description" content="hotaru - AIとの静かな対話。あなたの言葉をそっと受け止めます。">
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-NQ2CZMJXCS"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    // SupabaseのセッションからUser IDを取得してGA4に紐付け
+    const sbAuthToken = localStorage.getItem('sb-ubnqbpsbtmdplmlivxbj-auth-token');
+    let userId = null;
+    if (sbAuthToken) {
+      try { userId = JSON.parse(sbAuthToken).user?.id; } catch (e) { }
+    }
+
+    async function sha256(message) {
+      const msgUint8 = new TextEncoder().encode(message);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    if (userId) {
+      sha256(userId).then(hashedId => {
+        gtag('config', 'G-NQ2CZMJXCS', { 'user_id': hashedId });
+      });
+    } else {
+      gtag('config', 'G-NQ2CZMJXCS');
+    }
+  </script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    html,
+    body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      position: fixed;
+      background-color: #000;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* Root Font sizes for Universal Design */
+    :root {
+      --ai-font-size-small: 1rem;
+      --user-font-size-small: 0.875rem;
+      --ai-font-size-normal: 1.25rem;
+      --user-font-size-normal: 1.125rem;
+      --ai-font-size-large: 1.5rem;
+      --user-font-size-large: 1.375rem;
+      --line-height: 1.8;
+    }
+
+    body {
+      background-image: url('talk_v2.jpg');
+      background-size: cover;
+      background-position: center;
+      font-family: 'Noto Serif JP', serif;
+      color: #e8e0d0;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 5, 20, 0.45);
+      z-index: 0;
+    }
+
+    #chat-wrapper {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 1;
+    }
+
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 8rem 1.25rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      overscroll-behavior-y: contain;
+    }
+
+    #messages::-webkit-scrollbar {
+      display: none;
+    }
+
+    .message {
+      max-width: 85%;
+      line-height: var(--line-height);
+      letter-spacing: 0.05em;
+      opacity: 0;
+      animation: fadeIn 0.8s ease forwards;
+      word-break: break-all;
+      transition: opacity 2.5s ease, filter 2.5s ease, transform 2.5s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(0.5rem);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Font Size Mode Classes */
+    body.font-small .message.ai {
+      font-size: var(--ai-font-size-small);
+    }
+
+    body.font-small .message.user {
+      font-size: var(--user-font-size-small);
+    }
+
+    body.font-normal .message.ai {
+      font-size: var(--ai-font-size-normal);
+    }
+
+    body.font-normal .message.user {
+      font-size: var(--user-font-size-normal);
+    }
+
+    body.font-large .message.ai {
+      font-size: var(--ai-font-size-large);
+    }
+
+    body.font-large .message.user {
+      font-size: var(--user-font-size-large);
+    }
+
+    .message.user {
+      align-self: flex-end;
+      color: #d5e5f0;
+      text-align: right;
+    }
+
+    .message.ai {
+      align-self: flex-start;
+      color: #F5F5F5;
+      white-space: pre-wrap;
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
+    }
+
+    .message.ai a {
+      color: #a4c4db !important;
+      text-decoration: underline !important;
+    }
+
+    #input-area {
+      flex-shrink: 0;
+      display: flex;
+      align-items: flex-end;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+      background: linear-gradient(to top, rgba(0, 5, 20, 0.95), transparent);
+      min-height: 6.25rem;
+      width: 100vw;
+      box-sizing: border-box;
+    }
+
+    #user-input {
+      flex: 1;
+      min-width: 0;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(200, 215, 225, 0.35);
+      color: #e8e0d0;
+      font-family: 'Noto Serif JP', serif;
+      font-size: 1rem;
+      padding: 0.5rem 0;
+      outline: none;
+      border-radius: 0;
+      max-height: 7.5rem;
+      overflow-y: auto;
+      resize: none;
+      line-height: 1.5;
+      height: 2.125rem;
+    }
+
+    #user-input::placeholder {
+      color: rgba(232, 224, 208, 0.5);
+    }
+
+    #send-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      border-radius: 50%;
+      width: 2.875rem;
+      height: 2.875rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-bottom: 0.25rem;
+      transition: background 0.3s;
+    }
+
+    #send-btn:active {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    #black-out {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1s ease;
+    }
+
+    #black-out.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #nagori-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 101;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 3s ease;
+    }
+
+    #nagori-overlay.visible {
+      opacity: 1;
+    }
+
+    #nagori-text {
+      font-size: 1rem;
+      color: rgba(232, 224, 208, 0.7);
+      text-align: center;
+      line-height: 2.8;
+      letter-spacing: 0.2em;
+      transition: opacity 3s ease;
+      padding: 0 1.5rem;
+    }
+
+    .final-link {
+      position: fixed;
+      top: 1.875rem;
+      right: 1.875rem;
+      font-size: 0.875rem;
+      letter-spacing: 0.15em;
+      opacity: 0;
+      transition: opacity 4s ease;
+      z-index: 102;
+      pointer-events: none;
+      border-bottom: 1px solid rgba(232, 224, 208, 0.2);
+      padding-bottom: 0.25rem;
+    }
+
+    .final-link.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .final-link a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .thinking {
+      align-self: flex-start;
+      display: flex;
+      gap: 0.25rem;
+      padding: 0.625rem 0;
+    }
+
+    .thinking span {
+      width: 0.3125rem;
+      height: 0.3125rem;
+      background: rgba(200, 215, 225, 0.5);
+      border-radius: 50%;
+      animation: blink 1.4s infinite;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 0.2;
+      }
+
+      50% {
+        opacity: 1;
+      }
+    }
+
+    #bottom-layer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      padding: 1.25rem;
+      z-index: 800;
+      pointer-events: none;
+    }
+
+    #help-btn {
+      display: inline-block;
+      pointer-events: auto;
+      color: rgba(255, 200, 200, 0.6);
+      text-decoration: none;
+      font-size: 0.8rem;
+      border: 1px solid rgba(255, 150, 150, 0.3);
+      padding: 0.5rem 1rem;
+      border-radius: 0.25rem;
+      cursor: pointer;
+    }
+
+    #crisis-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 2000;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 1.25rem;
+      backdrop-filter: blur(0.5rem);
+    }
+
+    .crisis-content {
+      width: 100%;
+      max-width: 20rem;
+      text-align: center;
+      pointer-events: auto;
+    }
+
+    .crisis-title {
+      color: #fff;
+      margin-bottom: 1.5625rem;
+      font-size: 1.1rem;
+      letter-spacing: 0.1em;
+    }
+
+    .crisis-link {
+      display: block;
+      width: 100%;
+      padding: 1.125rem;
+      margin: 0.75rem 0;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 0.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    #close-crisis-btn {
+      margin-top: 1.875rem;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      text-decoration: underline;
+      font-size: 0.8rem;
+    }
+
+    #top-right-layer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      padding: 1.25rem;
+      z-index: 800;
+      pointer-events: none;
+      transition: opacity 2s;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.5rem;
+    }
+
+    #close-today-btn {
+      display: inline-block;
+      pointer-events: auto;
+      color: rgba(232, 224, 208, 0.6);
+      text-decoration: none;
+      font-size: 0.75rem;
+      border: 1px solid rgba(232, 224, 208, 0.25);
+      padding: 0.5rem 1rem;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      transition: opacity 0.5s;
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    #font-size-controls {
+      display: flex;
+      gap: 0.25rem;
+      pointer-events: auto;
+    }
+
+    .font-size-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      color: rgba(232, 224, 208, 0.8);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-family: 'Noto Serif JP', serif;
+      border: 1px solid rgba(232, 224, 208, 0.35);
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      transition: opacity 0.5s, background 0.3s, color 0.3s;
+      background: rgba(0, 0, 0, 0.45);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .font-size-btn:active {
+      background: rgba(232, 224, 208, 0.2);
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+      #messages {
+        padding: 8rem 1rem 1.5rem;
+        gap: 2rem;
+      }
+
+      .message {
+        max-width: 90%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="chat-wrapper">
+    <div id="messages"></div>
+    <div id="input-area">
+      <textarea id="user-input" placeholder="ここに言葉を…" autocomplete="off" rows="1"></textarea>
+      <button id="send-btn" type="button"><svg viewBox="0 0 24 24" width="24" height="24" fill="#f5f0e8">
+          <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
+        </svg></button>
+    </div>
+  </div>
+  <div id="bottom-layer">
+    <div id="help-btn">相談窓口</div>
+  </div>
+  <div id="top-right-layer">
+    <div id="font-size-controls">
+      <div class="font-size-btn" id="font-decrease-btn" onclick="changeFontSize(-1);" title="文字を小さく">A−</div>
+      <div class="font-size-btn" id="font-increase-btn" onclick="changeFontSize(1);" title="文字を大きく">A＋</div>
+    </div>
+    <div id="close-today-btn" onclick="closeToday();">今日を閉じる</div>
+  </div>
+  <div id="crisis-overlay">
+    <div class="crisis-content">
+      <div class="crisis-title">お困りのときは</div>
+      <a href="tel:0570064556" class="crisis-link"
+        onclick="gtag('event', 'click_crisis_link', { event_category: 'talk', event_label: 'tel_kokoro' });">こころの健康相談ダイヤル</a>
+      <a href="https://talkme.jp/" class="crisis-link" target="_blank"
+        onclick="gtag('event', 'click_crisis_link', { event_category: 'talk', event_label: 'talkme' });">チャット相談「あなたの居場所」</a>
+      <div id="close-crisis-btn">画面に戻る</div>
+    </div>
+  </div>
+  <div id="black-out"></div>
+  <div id="nagori-overlay">
+    <div id="nagori-text"></div>
+  </div>
+  <div id="close-guide" class="final-link"><a href="javascript:void(0);" onclick="closeToday();">今日を閉じる</a></div>
+
+  <script>
+    const url = "/api/chat_v2";
+    let history = [];
+    let isWaiting = false;
+    let isEnding = false;
+    let messageCount = 0;
+    const sessionStartTime = Date.now();
+
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const wrapper = document.getElementById('chat-wrapper');
+
+    // Font Size Mode Logic (3 levels: small / normal / large)
+    const FONT_LEVELS = ['small', 'normal', 'large'];
+    let fontSizeMode = localStorage.getItem('fontSizeMode') || 'normal';
+    if (!FONT_LEVELS.includes(fontSizeMode)) fontSizeMode = 'normal';
+    document.body.classList.add('font-' + fontSizeMode);
+    updateFontBtns();
+
+    function updateFontBtns() {
+      const idx = FONT_LEVELS.indexOf(fontSizeMode);
+      document.getElementById('font-decrease-btn').style.opacity = idx <= 0 ? '0.3' : '1';
+      document.getElementById('font-increase-btn').style.opacity = idx >= FONT_LEVELS.length - 1 ? '0.3' : '1';
+    }
+
+    function changeFontSize(direction) {
+      const idx = FONT_LEVELS.indexOf(fontSizeMode);
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= FONT_LEVELS.length) return;
+      document.body.classList.remove('font-' + fontSizeMode);
+      fontSizeMode = FONT_LEVELS[newIdx];
+      document.body.classList.add('font-' + fontSizeMode);
+      localStorage.setItem('fontSizeMode', fontSizeMode);
+      updateFontBtns();
+      gtag('event', 'toggle_font_size', { event_category: 'talk', size: fontSizeMode });
+    }
+
+    inputEl.addEventListener('input', () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+    });
+
+    function sendSessionStats() {
+      const sessionDuration = Math.round((Date.now() - sessionStartTime) / 1000);
+      gtag('event', 'session_end', { event_category: 'talk', message_count: messageCount, session_duration_sec: sessionDuration });
+    }
+    window.addEventListener('beforeunload', sendSessionStats);
+    window.addEventListener('pagehide', sendSessionStats);
+
+    const adjust = () => {
+      const vv = window.visualViewport;
+      if (vv) {
+        wrapper.style.height = vv.height + 'px';
+        wrapper.style.top = vv.offsetTop + 'px';
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+    };
+    window.visualViewport?.addEventListener('resize', adjust);
+    window.visualViewport?.addEventListener('scroll', adjust);
+
+    function getEmergencyResponse() {
+      const variations = [
+        "あなたのその苦しみ、一人で抱え込まないで。",
+        "あなたの心にあるその重荷を少しでも一緒に担えたらいいな。でも、他にも味方になってくれる場所がほかにもあるから、少し紹介させてね。",
+        "今、すごく辛いんだね。その重さ、一人で背負わなくていい。",
+        "その言葉を口にするまで、どれだけ苦しかっただろう。",
+        "今、限界まで来てるんだね。一人で決めなくていいよ。"
+      ];
+      const randomFirst = variations[Math.floor(Math.random() * variations.length)];
+      return randomFirst + "\nホタルも寄り添うけど、ちょっと人に頼ってみない？\n\n例えば\nよりそいホットライン 0120-279-338（福島県からは0120-279-226）\nいのちの電話 0120-783-556\n匿名チャット相談「あなたの居場所 https://talkme.jp/」\n10代〜20代女性向け「BONDプロジェクト https://bondproject.jp/」";
+    }
+
+    async function sendMessage() {
+      const text = inputEl.value.trim();
+      if (!text || isWaiting) return;
+
+      // CAPTURE AND CLEAR IMMEDIATELY (Reliability for PC/Tablet)
+      inputEl.value = '';
+      inputEl.dispatchEvent(new Event('input')); // 高さリセットをトリガー
+      inputEl.style.height = '2.125rem';
+
+      isWaiting = true;
+
+      if (window.innerWidth < 1024) {
+        inputEl.blur();
+      } else {
+        // PC/Tablet: Clear and keep focus for continuous typing
+        requestAnimationFrame(() => inputEl.focus());
+      }
+      addMessage(text, 'user');
+      history.push({ role: 'user', parts: [{ text }] });
+      showThinking();
+
+      messageCount++;
+      gtag('event', 'send_message', { event_category: 'talk', message_index: messageCount });
+
+      const deathKeywords = ["死にたい", "消えたい", "消えてなくなりたい", "殺して", "終わりにしたい", "自傷", "もう無理", "生きている意味がない", "もう人生終わりだ", "生きてる意味ない", "人生終わり"];
+      if (deathKeywords.some(k => text.includes(k))) {
+        gtag('event', 'crisis_keyword_detected', { event_category: 'talk', message_index: messageCount });
+        await new Promise(r => setTimeout(r, 700));
+        removeThinking();
+        addMessage(getEmergencyResponse(), 'ai');
+        isWaiting = false;
+        return;
+      }
+
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: history.slice(-20) })
+        });
+        const data = await res.json();
+        const isBlocked = data.promptFeedback?.blockReason || (data.candidates && data.candidates[0]?.finishReason === "SAFETY");
+        if (isBlocked) {
+          removeThinking();
+          addMessage(getEmergencyResponse(), 'ai');
+          isWaiting = false;
+          return;
+        }
+        const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || '…';
+        await new Promise(r => setTimeout(r, 700));
+        removeThinking();
+        addMessage(aiText, 'ai');
+        gtag('event', 'show_hal_message', { event_category: 'talk', message_index: messageCount });
+        history.push({ role: 'model', parts: [{ text: aiText }] });
+        if (aiText.includes('したっけ')) setTimeout(showNagori, 3500);
+      } catch (err) {
+        removeThinking();
+        addMessage('今は少し、言葉が見つからないみたい。', 'ai');
+      }
+      isWaiting = false;
+    }
+
+    // 表示上限：約3スクロール分（ユーザー＋AI計9件）
+    const MAX_VISIBLE_MESSAGES = 9;
+
+    function trimOldMessages() {
+      const msgs = messagesEl.querySelectorAll('.message');
+      if (msgs.length > MAX_VISIBLE_MESSAGES) {
+        const toRemove = msgs.length - MAX_VISIBLE_MESSAGES;
+        for (let i = 0; i < toRemove; i++) {
+          const oldMsg = msgs[i];
+          oldMsg.style.transition = 'opacity 0.6s ease';
+          oldMsg.style.opacity = '0';
+          setTimeout(() => oldMsg.remove(), 600);
+        }
+      }
+    }
+
+    function addMessage(text, role) {
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+      if (role === 'ai') {
+        // XSS対策: まずHTMLエスケープ
+        const escapedText = text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+        
+        // 安全になったテキストに対してリンク展開を適用
+        const linkedText = escapedText
+          .replace(/(https?:\/\/[\w\/:%#\$&\?\(\)~\.=\+\-]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`)
+          .replace(/(\d{2,4}-\d{2,4}-\d{3,4})/g, (t) => `<a href="tel:${t}">${t}</a>`);
+        div.innerHTML = linkedText;
+      } else { div.textContent = text; }
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      trimOldMessages();
+    }
+
+    function showThinking() {
+      const div = document.createElement('div'); div.className = 'thinking'; div.id = 'thinking-indicator';
+      div.innerHTML = '<span></span><span></span><span></span>';
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+    function removeThinking() { document.getElementById('thinking-indicator')?.remove(); }
+
+    async function executeEndFlow(isManual) {
+      if (isEnding) return;
+      isEnding = true;
+
+      if (isManual) {
+        gtag('event', 'click_今日を閉じる', { event_category: 'talk', message_count: messageCount });
+        addMessage('したっけー', 'ai');
+        await new Promise(r => setTimeout(r, 2000));
+      } else {
+        gtag('event', 'show_nagori', { event_category: 'talk', message_count: messageCount });
+      }
+      sendSessionStats();
+
+      const blackOut = document.getElementById('black-out');
+      const nagoriOverlay = document.getElementById('nagori-overlay');
+      const nagoriText = document.getElementById('nagori-text');
+
+      let pickedWord = "誰かが、そっと疲れたと呟きました";
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requestType: "getNagori" })
+        });
+        const data = await res.json();
+        if (data && data.nagori) pickedWord = data.nagori;
+      } catch (e) { /* noop in production */ }
+      nagoriText.textContent = pickedWord;
+
+      const wave = document.createElement('div');
+      Object.assign(wave.style, {
+        position: 'fixed', top: '-30vh', left: 0, width: '100%', height: '30vh',
+        background: 'linear-gradient(to bottom, transparent, rgba(232, 224, 208, 0.25), transparent)',
+        filter: 'blur(35px)', zIndex: '99', pointerEvents: 'none'
+      });
+      document.body.appendChild(wave);
+
+      wave.animate([{ top: '-30vh' }, { top: '120vh' }], { duration: 3000, easing: 'ease-in-out' });
+
+      // 波の進行と同時にUI・過去の会話をフェードアウト
+      document.getElementById('input-area').style.transition = 'opacity 1.5s ease';
+      document.getElementById('input-area').style.opacity = '0';
+      document.getElementById('bottom-layer').style.transition = 'opacity 1.5s ease';
+      document.getElementById('bottom-layer').style.opacity = '0';
+      document.getElementById('top-right-layer').style.transition = 'opacity 1.5s ease';
+      document.getElementById('top-right-layer').style.opacity = '0';
+
+      document.querySelectorAll('.message').forEach((msg) => {
+        msg.style.transition = 'opacity 1.5s ease, filter 1.5s ease';
+        msg.style.opacity = '0';
+        msg.style.filter = 'blur(10px)';
+      });
+
+      // 暗転 -> 凪の言葉 -> フェードアウト -> 流れ星 -> リダイレクト
+      setTimeout(() => {
+        blackOut.classList.add('visible');
+
+        setTimeout(() => {
+          nagoriOverlay.classList.add('visible');
+
+          setTimeout(() => {
+            nagoriText.style.opacity = '0';
+
+            setTimeout(() => {
+              const star = document.createElement('div');
+              Object.assign(star.style, {
+                position: 'fixed', width: '160px', height: '1.5px',
+                background: 'linear-gradient(to right, transparent, rgba(232,224,208,0.9), transparent)',
+                transform: 'rotate(-35deg)', zIndex: '105', pointerEvents: 'none', opacity: '0'
+              });
+              document.body.appendChild(star);
+              star.animate([
+                { right: '-20vw', top: '20vh', opacity: 1 },
+                { right: '120vw', top: '80vh', opacity: 0 }
+              ], { duration: 1800, easing: 'ease-out' });
+
+              setTimeout(() => {
+                // use relative path to ensure local / deployed redirect works
+                window.location.href = "index_trial_bk.html";
+              }, 1800);
+
+            }, 2500); // 言葉が消えてから少し待って星を流す
+
+          }, 5000); // 凪の言葉を見せる時間
+
+        }, 1500); // 波が過ぎてから凪の言葉が出るまでの間
+
+      }, 1500); // 波が通り過ぎる途中で暗転開始
+    }
+
+    function showNagori() { executeEndFlow(false); }
+    function closeToday() { executeEndFlow(true); }
+
+    // イベントリスナー設定
+    sendBtn.addEventListener('click', sendMessage);
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    document.getElementById('help-btn').addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      document.getElementById('crisis-overlay').style.display = 'flex';
+      gtag('event', 'open_crisis_overlay', { event_category: 'talk' });
+    });
+
+    document.getElementById('close-crisis-btn').addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      document.getElementById('crisis-overlay').style.display = 'none';
+      gtag('event', 'close_crisis_overlay', { event_category: 'talk' });
+    });
+
+    adjust();
+  </script>
+</body>
+
+</html>

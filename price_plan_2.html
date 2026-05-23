@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>夜の過ごし方 | hotaru</title>
+    
+    <!-- Google Fonts: Noto Serif JP -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200;400&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #000;
+            --text-primary: rgba(255, 255, 255, 0.9);
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --accent-glow: rgba(255, 255, 200, 0.3);
+            --border: rgba(255, 255, 255, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Noto Serif JP', "Hiragino Mincho ProN", "YuMincho", serif;
+            line-height: 2.3;
+            letter-spacing: 0.12em;
+            overflow-x: hidden;
+        }
+
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 30%, #111 0%, #000 70%);
+        }
+
+        .container {
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 80px 24px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 120px;
+        }
+
+        .title {
+            font-size: 1.6rem;
+            font-weight: 200;
+            letter-spacing: 0.4em;
+            margin-bottom: 24px;
+            opacity: 0.95;
+        }
+
+        .intro-text {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            letter-spacing: 0.2em;
+        }
+
+        .plan-section {
+            margin-bottom: 100px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 1.2s ease;
+        }
+
+        .plan-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .plan-label {
+            font-size: 1.1rem;
+            margin-bottom: 24px;
+            display: inline-block;
+            border-bottom: 0.5px solid rgba(255, 255, 255, 0.4);
+            padding-bottom: 6px;
+            font-weight: 400;
+        }
+
+        .plan-desc {
+            font-size: 0.95rem;
+            opacity: 0.8;
+            white-space: pre-line;
+            margin: 0;
+        }
+
+        .plan-note {
+            font-size: 0.8rem;
+            opacity: 0.4;
+            margin-top: 24px;
+            line-height: 1.8;
+        }
+
+        .back-link {
+            display: block;
+            margin: 100px auto 0;
+            text-align: center;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            letter-spacing: 0.1em;
+            transition: opacity 0.3s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+            color: #fff;
+        }
+
+        /* Animation */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(15px);
+            transition: all 1s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media screen and (max-width: 480px) {
+            .container { padding: 60px 20px; }
+            .title { font-size: 1.4rem; }
+            .plan-label { font-size: 1rem; }
+            .plan-desc { font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <div class="container">
+        <header class="header fade-in">
+            <h1 class="title">【夜の過ごし方】</h1>
+            <p class="intro-text">どちらを選んでも、あなたの夜に、変わりなく灯ります。</p>
+        </header>
+
+        <section class="plan-section fade-in">
+            <h2 class="plan-label">「一晩のともしび（無料）」</h2>
+            <p class="plan-desc">その night だけの、まっさらな場所。
+            常に同じスタンスで夜を迎えます。
+            
+            今日を閉じると、
+            その夜の対話は、静かに終わる。
+            
+            終わりに、お賽銭箱がそっと出てきます。
+            払うかどうかは、あなたが決める。
+            ただ、気持ちだけ、そっと置いていく。</p>
+        </section>
+
+        <section class="plan-section fade-in">
+            <h2 class="plan-label">「続く夜のともしび（有料）」</h2>
+            <p class="plan-desc">自分が残してきた言葉を、見返せる場所。
+            自分が過ごしてきた夜の痕跡。
+            
+            いつもの場所を持つ、
+            月に一度、小さなお守りを持つような感覚で。
+            対話は何度でも。声を綴ることができる。</p>
+            <p class="plan-note">月額 780円 / β版価格 680円（解約するまで据置き）</p>
+        </section>
+
+        <section class="plan-section fade-in">
+            <h2 class="plan-label">「声を綴る」</h2>
+            <p class="plan-desc">自分の綴った声を、旅館の記帳のように、
+            見知らぬ誰かと共有してもいい。
+            
+            同じ時間に、誰かがここにいた。
+            その気配だけが、静かに漂っている。
+            閲覧は、どなたでも。</p>
+        </section>
+
+        <section class="plan-section fade-in">
+            <h2 class="plan-label">「これまでの夜を閉じる」</h2>
+            <p class="plan-desc">一晩のともしびで会話が止まらなかった夜を、
+            3回分、あとでまとめて。
+            
+            払えなかった夜を、責めない。
+            それがhotaruの倫理観です。</p>
+        </section>
+
+        <section class="plan-section fade-in">
+            <h2 class="plan-label">「お裾分けのともしび」</h2>
+            <p class="plan-desc">何と声をかけたらいいか、分からなかった。
+            ただ、この場所を渡したかった。
+            
+            自分が救われた夜を、誰かにそっと渡す。
+            贈った側も、贈られた側も、
+            同じ夜をしばらく共有することができます。</p>
+        </section>
+
+        <footer class="fade-in">
+            <a href="index.html" class="back-link">← hotaruに戻る</a>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, {
+                threshold: 0.1
+            });
+
+            document.querySelectorAll('.fade-in, .plan-section').forEach(el => {
+                observer.observe(el);
+            });
+        });
+    </script>
+</body>
+</html>

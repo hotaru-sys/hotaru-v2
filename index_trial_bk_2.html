@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>hotaru ｜終了画面</title>
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NQ2CZMJXCS"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        const sbAuthToken = localStorage.getItem('sb-ubnqbpsbtmdplmlivxbj-auth-token');
+        let userId = null;
+        if (sbAuthToken) {
+            try { userId = JSON.parse(sbAuthToken).user?.id; } catch (e) {}
+        }
+        gtag('config', 'G-NQ2CZMJXCS', { 'user_id': userId });
+    </script>
+
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { scroll-behavior: smooth; }
+        body {
+            margin: 0; padding: 0;
+            background-color: #000;
+            color: rgba(255, 255, 255, 0.9);
+            font-family: "Hiragino Mincho ProN", "YuMincho", serif;
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        .bg-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background-image: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.75)), url('IMG_2116.jpg');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 0 25px 120px;
+        }
+
+        .text-center { text-align: center; }
+
+        .v-line {
+            width: 1px; height: 60px;
+            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.4), transparent);
+            margin: 30px auto;
+        }
+
+        .fade-in {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 2s ease-out, transform 2s ease-out;
+        }
+        .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+        h1 {
+            font-size: 1.2rem; font-weight: 400; letter-spacing: 0.6em;
+            text-indent: 0.6em; margin: 30px 0 80px; color: #fff;
+            text-align: center;
+        }
+
+        .main-copy { font-size: 1.25rem; font-weight: 600; margin-bottom: 35px; color: #fff; display: block; }
+        .middle-copy { font-size: 1.05rem; color: rgba(255, 255, 255, 0.9); margin-bottom: 35px; }
+        .sub-copy { font-size: 0.95rem; color: rgba(255, 255, 255, 0.8); }
+
+        .section-title-underlined {
+            font-size: 1rem; margin-bottom: 15px; color: #fff; letter-spacing: 0.2em;
+            display: inline-block; border-bottom: 1px solid rgba(255, 255, 255, 0.3); 
+            padding-bottom: 6px; width: 100%;
+        }
+
+        .nagori-balancer { display: flex; flex-direction: column; align-items: center; margin: 30px 0; }
+        .nagori-text { margin: 60px 0 !important; font-weight: 600; }
+
+        /* ナビゲーション */
+        .trial-nav {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.95) 80%, transparent 100%);
+            padding: 30px 0 50px;
+            z-index: 1000;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            transform: translateY(100%);
+            transition: transform 0.8s;
+            opacity: 0;
+        }
+        .trial-nav.is-visible { transform: translateY(0); opacity: 1; }
+
+        .nav-inner {
+            max-width: 600px; margin: 0 auto;
+            display: flex; justify-content: space-around; align-items: center;
+        }
+
+        .nav-item {
+            text-decoration: none; color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85rem; text-align: center;
+        }
+        .nav-sub { font-size: 0.6rem; color: rgba(255, 255, 255, 0.3); display: block; }
+        .nav-divider { width: 1px; height: 12px; background: rgba(255,255,255,0.15); }
+
+        .btn-lamp {
+            display: inline-block;
+            border: 1px solid rgba(255,255,255,0.6);
+            padding: 16px 45px;
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.95rem; letter-spacing: 0.2em;
+            margin-top: 40px; transition: all 0.5s;
+        }
+
+        /* --------------------------------------------------
+           アンケートセクション (情緒的な月のSVG描画)
+        -------------------------------------------------- */
+        .survey-section { margin: 80px 0; padding: 40px 20px; }
+        .moon-container { display: flex; justify-content: center; gap: 40px; margin-bottom: 20px; }
+        .moon-btn { background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 12px; transition: 0.3s; }
+        .moon-btn:active { transform: scale(0.95); }
+        
+        .moon-visual { width: 48px; height: 48px; position: relative; }
+        .moon-visual svg { width: 100%; height: 100%; filter: drop-shadow(0 0 5px rgba(232, 224, 208, 0.2)); }
+        
+        .moon-btn span { font-size: 0.7rem; color: rgba(255,255,255,0.4); letter-spacing: 0.1em; }
+
+        #survey-result-msg { display: none; font-size: 0.85rem; color: rgba(255, 255, 255, 0.8); line-height: 2; margin-top: 20px; }
+        .choice-btn { background:none; border:1px solid rgba(255,255,255,0.2); color:#fff; padding:8px 25px; font-size:0.85rem; margin: 15px 8px; cursor:pointer; border-radius: 20px; transition: 0.3s; }
+        .choice-btn:active { background: rgba(255,255,255,0.1); }
+
+        .hotaru-particle {
+            position: fixed; width: 2px; height: 2px; background: #fff;
+            border-radius: 50%; pointer-events: none; opacity: 0; z-index: 10;
+            box-shadow: 0 0 8px #fff;
+        }
+
+        @keyframes firefly-move {
+            0% { transform: translate(0, 0); opacity: 0; }
+            20% { opacity: 0.5; }
+            100% { transform: translate(60px, -180px); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-overlay"></div>
+
+<nav class="trial-nav">
+    <div class="nav-inner">
+        <a href="isolation_trial.html" class="nav-item">光が消えてゆく <span class="nav-sub">光をそっと消す</span></a>
+        <div class="nav-divider"></div>
+        <a href="hotaru_trial.html" class="nav-item">光が寄り添う <span class="nav-sub">光を眺める</span></a>
+        <div class="nav-divider"></div>
+        <a href="talk_trial.html" class="nav-item">言葉にする <span class="nav-sub">静かに対話する</span></a>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="v-line"></div>
+    
+    <div class="fade-in text-center section-hero">
+        <h1>hotaru</h1>
+        <p class="main-copy">ちゃんと疲れる。<br>だって人間ですから。</p>
+    </div>
+
+    <div class="fade-in text-center section-content">
+        <p class="middle-copy">
+            夜、頭が止まらない。<br>
+            でも誰かに話すほどのことでもない。<br>
+            何かしなきゃとは思うけど、<br>何もしたくない。<br><br>
+            そんな夜のために。
+        </p>
+
+        <div class="nagori-balancer">
+            <p class="middle-copy">
+                応援しない。成長を求めない。<br>
+                使い続けなくてもいい。<br>
+                戻ってこれればいい。<br><br>
+                ひとつ言葉を残したい夜もある。<br>
+                言葉すら何も残さず閉じたい夜もある。<br><br>
+                どちらも眺めるだけでもいいし、触ってもいい。
+            </p>
+
+            <p class="sub-copy nagori-text" style="color:#fff;">
+                「光が消えてゆく」と「光が寄り添う」
+            </p>
+
+            <p class="sub-copy" style="line-height: 1.8; margin-bottom: 40px;">
+                触れていくと、hotaruがそっと会話するかを尋ねてきます。<br>
+                もし何かを吐き出したい夜なら、そのまま言葉を置いてください。
+            </p>
+        </div>
+    </div>
+
+    <div class="fade-in text-center">
+        <a href="isolation_trial.html" class="btn-lamp" onclick="gtag('event', 'click_hotaruを灯す', { event_category: 'index' });">
+            hotaruを灯す
+        </a>
+    </div>
+
+    <div class="v-line"></div>
+
+    <!-- アンケートセクション (情緒的な月のSVG描画) -->
+    <div class="survey-section text-center" id="survey-anchor">
+        <div id="survey-form">
+            <p style="font-size: 0.85rem; color: rgba(255,255,255,0.5); margin-bottom: 35px; letter-spacing: 0.15em;">今の頭の忙しさは？</p>
+            <div class="moon-container">
+                <button class="moon-btn" onclick="sendSurvey('calm')">
+                    <div class="moon-visual">
+                        <svg viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(232, 224, 208, 0.2)" stroke-width="1"/>
+                            <circle cx="50" cy="50" r="45" fill="rgba(232, 224, 208, 0.05)"/>
+                        </svg>
+                    </div>
+                    <span>静か</span>
+                </button>
+                <button class="moon-btn" onclick="sendSurvey('neutral')">
+                    <div class="moon-visual">
+                        <svg viewBox="0 0 100 100">
+                            <path d="M50,5 A45,45 0 0,1 50,95 L50,5" fill="rgba(232, 224, 208, 0.8)"/>
+                            <path d="M50,95 A45,45 0 0,1 50,5 L50,95" fill="rgba(232, 224, 208, 0.1)"/>
+                        </svg>
+                    </div>
+                    <span>ふつう</span>
+                </button>
+                <button class="moon-btn" onclick="sendSurvey('busy')">
+                    <div class="moon-visual">
+                        <svg viewBox="0 0 100 100">
+                            <defs>
+                                <radialGradient id="busyMoon" cx="50%" cy="50%" r="50%">
+                                    <stop offset="0%" style="stop-color:rgba(232, 224, 208, 1)"/>
+                                    <stop offset="100%" style="stop-color:rgba(232, 224, 208, 0.8)"/>
+                                </radialGradient>
+                            </defs>
+                            <circle cx="50" cy="50" r="46" fill="url(#busyMoon)"/>
+                            <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+                        </svg>
+                    </div>
+                    <span>忙しい</span>
+                </button>
+            </div>
+        </div>
+        <div id="survey-result-msg"></div>
+    </div>
+
+    <div class="fade-in text-left section-plan">
+        <p class="section-title-underlined">一晩のともしび（無料）</p>
+        <p class="sub-copy">
+            その夜だけの、まっさらな場所。<br>
+            前の夜は持ち込まない。次の夜には持ち越さない。<br>
+            毎回、はじめての夜として迎えます。
+        </p>
+    </div>
+
+    <div class="fade-in text-left section-plan">
+        <p class="section-title-underlined">続く夜のともしび（有料）</p>
+        <p class="sub-copy">
+            自分が残してきた言葉を、見返せる場所。<br>
+            誰かに見せるためじゃない。それはただ、自分だけが知っている痕跡。
+        </p>
+    </div>
+
+    <div class="fade-in text-left section-plan">
+        <p class="section-title-underlined">お裾分けのともしび</p>
+        <p class="sub-copy">
+            声の掛け方がわからない人にそっと送れます。<br>
+            そして、渡してくれたあなたと、その人の夜を少しの期間そっと寄り添います。
+        </p>
+        <div style="margin-top:20px; text-align:center;">
+            <button id="issue-gift-btn-mid" style="background:none; border:1px solid rgba(255,255,255,0.4); color:#fff; padding:10px 25px; border-radius:20px; font-size:0.8rem; cursor:pointer; font-family: inherit;">
+                お裾分け用URLを発行する
+            </button>
+            <div id="gift-url-message-mid" style="display:none; color:rgba(255,255,255,0.5); font-size:0.75rem; margin-top:10px;">URLをコピーしました、大切な人に送ってください</div>
+        </div>
+    </div>
+
+    <footer style="margin-top: 80px; text-align: center; padding-bottom: 40px;">
+        <div style="font-size: 0.95rem; margin-bottom: 60px; color: rgba(255,255,255,0.7);">
+            <p>最後は人が人を繋ぐので、</p>
+            <p>そこまでの居場所や、</p>
+            <p>橋渡しの場でありたい。</p>
+            <p style="margin-top: 25px; letter-spacing: 0.8em; text-indent: 0.8em; color: #fff;">hotaru</p>
+        </div>
+        <p style="font-size: 0.65rem; color: rgba(255, 255, 255, 0.5); line-height: 1.6; padding: 0 20px;">
+            ※対話機能は生成AIによるものであり、人間のカウンセラーが対応するものではありません。
+        </p>
+        <div style="margin-top: 40px; font-size: 0.65rem; color: rgba(255,255,255,0.2);">© hotaru. All rights reserved.</div>
+    </footer>
+</div>
+
+<script>
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) { entry.target.classList.add('visible'); }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+    let surveyBaseMsg = '';
+    function sendSurvey(status) {
+        gtag('event', 'web_survey_answer', { 'status': status });
+        if (status === 'calm') surveyBaseMsg = '今夜は、そのまま静かに。';
+        else if (status === 'neutral') surveyBaseMsg = '今夜は静かに。おやすみなさい。';
+        else if (status === 'busy') surveyBaseMsg = 'まずはゆっくりと、おやすみなさい。';
+
+        const resultMsg = document.getElementById('survey-result-msg');
+        resultMsg.innerHTML = '今夜の続きとして、ここを置いておきますか？<br>' +
+            '<button class="choice-btn" onclick="showAmuletMsg()">はい</button>' +
+            '<button class="choice-btn" onclick="showAmuletMsg()">いいえ</button>';
+        document.getElementById('survey-form').style.display = 'none';
+        resultMsg.style.display = 'block';
+    }
+
+    function showAmuletMsg() {
+        const resultMsg = document.getElementById('survey-result-msg');
+        resultMsg.innerHTML = surveyBaseMsg + '<br><br>ありがとうございます。<br>Web以外の「お守り」として持つ方法を、現在準備しています。';
+    }
+
+    window.addEventListener('scroll', () => {
+        const nav = document.querySelector('.trial-nav');
+        if (window.scrollY > 150) nav.classList.add('is-visible');
+        else nav.classList.remove('is-visible');
+    });
+
+    const issueBtnMid = document.getElementById('issue-gift-btn-mid');
+    if (issueBtnMid) {
+        issueBtnMid.addEventListener('click', () => {
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('ref', 'gift');
+            const shareText = `あのさ\nうまく言えないけど、ちょっと疲れた時のためのアプリを贈ります。\n気が向いたら使ってみて。\n\n${currentUrl.toString()}`;
+            navigator.clipboard.writeText(shareText).then(() => {
+                const msgMid = document.getElementById('gift-url-message-mid');
+                msgMid.style.display = 'block';
+                setTimeout(() => { msgMid.style.display = 'none'; }, 3000);
+            });
+        });
+    }
+
+    function createFirefly() {
+        const firefly = document.createElement('div');
+        firefly.className = 'hotaru-particle';
+        firefly.style.left = Math.random() * window.innerWidth + 'px';
+        firefly.style.top = Math.random() * window.innerHeight + 'px';
+        const duration = 20 + Math.random() * 10;
+        firefly.style.animation = `firefly-move ${duration}s linear infinite`;
+        document.body.appendChild(firefly);
+        setTimeout(() => { firefly.remove(); createFirefly(); }, duration * 1000);
+    }
+    for(let i = 0; i < 15; i++) { setTimeout(createFirefly, Math.random() * 5000); }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="gift_logging_script.js"></script>
+</body>
+</html>

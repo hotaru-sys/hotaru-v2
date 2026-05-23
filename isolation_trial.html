@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routine Edition|trial</title>
+    <meta name="description" content="hotaru - 光が消えていく、そっと光と音をあなたの好きな具合に消していく夜の時間。">
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NQ2CZMJXCS"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      // SupabaseのセッションからUser IDを取得してGA4に紐付け（SHA-256で匿名化）
+      async function setHashedUserId() {
+        const sbAuthToken = localStorage.getItem('sb-ubnqbpsbtmdplmlivxbj-auth-token');
+        let userId = null;
+        if (sbAuthToken) {
+          try { userId = JSON.parse(sbAuthToken).user?.id; } catch (e) {}
+        }
+
+        if (userId) {
+          const msgUint8 = new TextEncoder().encode(userId);
+          const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          const hashedId = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+          gtag('config', 'G-NQ2CZMJXCS', { 'user_id': hashedId });
+        } else {
+          gtag('config', 'G-NQ2CZMJXCS');
+        }
+      }
+      setHashedUserId();
+    </script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; touch-action:none; -webkit-user-select:none; user-select:none; }
+        body, html { background:#000; height:100vh; width:100vw; overflow:hidden; font-family:serif; }
+        
+        #stage { 
+            position:absolute; width:100%; height:100%; 
+            background:url('background_hotaru.jpg') center/cover; 
+            transition:opacity 10s linear, filter 2s ease; 
+            z-index:1; 
+            filter: brightness(1.0);
+        }
+
+        #moon { 
+            position:absolute; top:15%; left:12%;
+            width:44px; height:44px;
+            background:radial-gradient(circle at 68% 32%, transparent 43%, #fffde0 48%); 
+            border-radius:50%; filter:blur(1.5px); 
+            box-shadow:0 0 30px 8px rgba(255,253,224,0.2); 
+            z-index:3; transition:opacity 4s; opacity:0.9; 
+        }
+
+        .house { position: absolute; opacity: 0.95; filter: drop-shadow(0 0 3px rgba(0,0,0,0.6)); }
+        #house1 { top: 58%; right: 20%; width: 28px; z-index: 10; }
+        #house2 { top: 54%; right: 30%; width: 26px; z-index: 9; opacity: 0.8; }
+        #house3 { top: 52%; right: 12%; width: 22px; z-index: 8; opacity: 0.6; }
+
+        .house-light { transition: opacity 3s; opacity: 1; }
+
+        #hotaru-container { position: absolute; width: 100%; height: 100%; z-index: 100; pointer-events: none; }
+        .hotaru { position:absolute; width:7px; height:7px; border-radius:50%; background:#fffde0; opacity:0; transition: opacity 1s; }
+
+        #ui-layer { position: fixed; top: 0; left: 0; width: 100%; padding: 25px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 600; pointer-events: none; transition: opacity 2s; }
+        #timer-section { display: flex; flex-direction: column; align-items: center; pointer-events: auto; }
+        #timer-btn { cursor: pointer; position: relative; display: flex; align-items: center; gap: 10px; }
+        #timer-icon { fill: rgba(255, 253, 224, 0.7); width: 28px; height: 28px; }
+        #timer-display { color: rgba(255, 253, 224, 0.8); font-size: 0.9rem; font-family: monospace; letter-spacing: 0.1em; }
+        #timer-menu { position: absolute; top: 40px; left: 0; background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(255, 253, 224, 0.3); border-radius: 5px; display: none; flex-direction: column; overflow: hidden; z-index: 700; }
+        .menu-item { color: #fffde0; padding: 12px 24px; font-size: 0.85rem; cursor: pointer; border-bottom: 1px solid rgba(255, 253, 224, 0.1); white-space: nowrap; }
+        #top-exit { pointer-events: auto; }
+        #top-exit a { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; background: rgba(0,0,0,0.2); }
+
+        #bottom-layer { position: fixed; bottom: 0; left: 0; width: 100%; padding: 25px; z-index: 800; pointer-events: none; transition: opacity 2s; }
+        #help-btn { display: inline-block; pointer-events: auto; color: rgba(255, 200, 200, 0.6); text-decoration: none; font-size: 0.8rem; border: 1px solid rgba(255, 150, 150, 0.3); padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+
+        #crisis-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 2000; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(8px); }
+        .crisis-content { width: 100%; max-width: 320px; text-align: center; pointer-events: auto; }
+        .crisis-link { display: block; width: 100%; padding: 18px; margin: 12px 0; border: 1px solid rgba(255,255,255,0.2); color: #fff; text-decoration: none; border-radius: 8px; background: rgba(255,255,255,0.05); }
+        #close-crisis { margin-top: 20px; color: #fff; cursor: pointer; text-decoration: underline; font-size: 0.8rem; }
+
+        #curtain { position:fixed; width:100%; height:100%; background:#000; opacity:0; pointer-events:none; z-index:1500; transition:opacity 5s; }
+        
+        #center-light {
+            position:fixed; left:50%; top:50%; width:9px; height:9px;
+            margin-left:-4.5px; margin-top:-4.5px; border-radius:50%;
+            background:#fffde0; z-index:1700; opacity: 0.15; pointer-events:none;
+            transition: all 3s ease-in-out;
+            transform: translate(-50%, -50%) scale(0.8);
+        }
+
+        #breath-overlay {
+            position: fixed;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 1.15rem;
+            letter-spacing: 0.15em;
+            line-height: 2.2;
+            opacity: 0;
+            z-index: 1000;
+            text-align: center;
+            width: 100%;
+            pointer-events: auto;
+            transition: opacity 0.5s ease;
+            font-family: inherit;
+        }
+
+        #final { position:fixed; width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; opacity:0; pointer-events:none; z-index:1800; transition:opacity 6s ease-in; }
+        #final a { padding:15px 25px; border:1px solid rgba(255,255,255,0.2); color:rgba(255,255,255,0.7); text-decoration:none; margin:10px; font-size:0.9rem; }
+        
+        #tap-area { position:absolute; width:100%; height:100%; z-index:350; cursor:pointer; }
+    </style>
+</head>
+<body>
+
+<div id="ui-layer">
+    <div id="timer-section" style="flex-direction: row; align-items: center; gap: 25px;">
+        <div id="timer-btn">
+            <svg id="timer-icon" viewBox="0 0 24 24"><path d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z" /></svg>
+            <span id="timer-display">02:00</span>
+            <div id="timer-menu">
+                <div class="menu-item" data-sec="300">5分</div>
+                <div class="menu-item" data-sec="900">15分</div>
+                <div class="menu-item" data-sec="1800">30分</div>
+                <div class="menu-item" data-sec="3600">60分</div>
+                <div class="menu-item" data-sec="7200">120分</div>
+            </div>
+        </div>
+        <a href="index_trial_bk_2.html" id="top-close-btn" style="pointer-events: auto; color: rgba(255,255,255,0.4); text-decoration: none; font-size: 0.75rem; border-bottom: 0.5px solid rgba(255,255,255,0.2); white-space: nowrap;">今日を閉じる</a>
+    </div>
+    <div id="top-exit"><a href="talk_trial.html" id="exit-link">言葉にするに進む</a></div>
+</div>
+
+<div id="bottom-layer"><div id="help-btn">相談窓口</div></div>
+
+<div id="crisis-overlay">
+    <div class="crisis-content">
+        <div class="crisis-title">お困りのときは</div>
+        <a href="tel:0570064556" class="crisis-link">こころの健康相談ダイヤル</a>
+        <a href="https://talkme.jp/" class="crisis-link" target="_blank">チャット相談「あなたの居場所」</a>
+        <div id="close-crisis">画面に戻る</div>
+    </div>
+</div>
+
+<div id="stage">
+    <div id="moon"></div>
+    <div id="house1" class="house">
+        <svg viewBox="0 0 90 100" width="100%"><polygon points="45,4 2,46 88,46" fill="#1a1510"/><line x1="2" y1="46" x2="88" y2="46" stroke="#2a2318" stroke-width="2"/><rect x="12" y="46" width="66" height="48" fill="#241d14"/><rect class="house-light" x="18" y="55" width="22" height="18" fill="#fff8c0" rx="1"/><rect class="house-light" x="50" y="55" width="22" height="18" fill="#fff8c0" rx="1"/><circle class="house-light" cx="45" cy="80" r="3" fill="#ffe080" filter="blur(1px)"/></svg>
+    </div>
+    <div id="house2" class="house">
+        <svg viewBox="0 0 90 100" width="100%"><polygon points="45,4 2,46 88,46" fill="#1d1812"/><rect x="12" y="46" width="66" height="48" fill="#292117"/><rect class="house-light" x="18" y="55" width="22" height="18" fill="#fffbe0" rx="1"/><rect class="house-light" x="50" y="55" width="22" height="18" fill="#fffbe0" rx="1"/></svg>
+    </div>
+    <div id="house3" class="house">
+        <svg viewBox="0 0 90 100" width="100%"><polygon points="45,4 2,46 88,46" fill="#16120c"/><rect x="12" y="46" width="66" height="48" fill="#1f1810"/><rect class="house-light" x="22" y="57" width="18" height="15" fill="#fff2b0" rx="1"/><rect class="house-light" x="54" y="57" width="18" height="15" fill="#fff2b0" rx="1"/></svg>
+    </div>
+</div>
+
+<div id="hotaru-container"></div>
+<div id="breath-overlay">「ただ置いておくだけでもいい。<br>　　そっと光と音を消してもいい。」</div>
+<div id="center-light"></div>
+<div id="tap-area"></div>
+
+<div id="final">
+    <div style="color:rgba(255,255,255,0.5); margin-bottom:40px; letter-spacing:0.3em;">言葉にしてみませんか？</div>
+    <div style="display:flex;">
+        <a href="talk_trial.html" class="final-nav-link">言葉にする</a>
+        <a href="index_trial_bk_2.html" class="final-nav-link">今日を閉じる</a>
+    </div>
+</div>
+<div id="curtain"></div>
+
+<script>
+const moonLevels = [0.6, 0.3, 0.1, 0]; 
+let timeLeft = 120; 
+let remaining = 14; 
+let flies = [], context, source, gainNode, timerInterval;
+const sessionStartTime = Date.now();
+let audioStarted = false, isEnding = false, isFinal = false, moonStep = 0; 
+
+const stage = document.getElementById('stage'), moon = document.getElementById('moon');
+const centerLight = document.getElementById('center-light'), finalU = document.getElementById('final'), curtain = document.getElementById('curtain');
+const timerBtn = document.getElementById('timer-btn'), timerMenu = document.getElementById('timer-menu'), timerDisplay = document.getElementById('timer-display');
+const container = document.getElementById('hotaru-container');
+const crisisOverlay = document.getElementById('crisis-overlay');
+
+function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function updateTimer() {
+    if (isEnding) return;
+    if (timeLeft > 0) {
+        timeLeft--;
+        timerDisplay.textContent = formatTime(timeLeft);
+        
+        if (timeLeft === 15 && audioStarted && gainNode) {
+            gainNode.gain.cancelScheduledValues(context.currentTime);
+            gainNode.gain.setValueAtTime(gainNode.gain.value, context.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 15);
+        }
+    }
+
+    if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        endScene();
+    }
+}
+
+function updateMoon() {
+    if (moonStep < moonLevels.length) { 
+        moon.style.opacity = moonLevels[moonStep++]; 
+    }
+}
+
+async function startAudio() {
+    if (audioStarted) return;
+    audioStarted = true;
+    try {
+        context = new (window.AudioContext || window.webkitAudioContext)();
+        const resp = await fetch('bgm_summer.m4a');
+        const buffer = await context.decodeAudioData(await resp.arrayBuffer());
+        source = context.createBufferSource();
+        source.buffer = buffer; source.loop = true;
+        gainNode = context.createGain();
+        gainNode.gain.setValueAtTime(0, context.currentTime);
+        gainNode.gain.linearRampToValueAtTime(1.0, context.currentTime + 2);
+        source.connect(gainNode); gainNode.connect(context.destination);
+        source.start();
+    } catch(e) { console.error("Audio Load Error", e); audioStarted = false; }
+}
+
+function updateVolumeByCount() {
+    if (!gainNode || !context) return;
+    const nextCount = remaining - 1;
+    const nextVolume = Math.max(0, nextCount / 14);
+    
+    gainNode.gain.cancelScheduledValues(context.currentTime);
+    gainNode.gain.setValueAtTime(gainNode.gain.value, context.currentTime);
+    gainNode.gain.linearRampToValueAtTime(nextVolume, context.currentTime + 1.5);
+}
+
+function killOne() {
+    const alive = flies.filter(f => !f.dead && !f.dying);
+    if (alive.length === 0) return;
+
+    updateVolumeByCount();
+
+    const nextBrightness = 0.2 + ((remaining - 1) / 14) * 0.8;
+    stage.style.filter = `brightness(${nextBrightness})`;
+    
+    const target = alive[Math.floor(Math.random() * alive.length)];
+    target.dying = true;
+    const el = target.el;
+
+    el.style.transition = 'none'; 
+    el.style.background = '#fff'; 
+    el.style.boxShadow = '0 0 40px 20px #fffde0'; 
+    el.style.transform += ' scale(4.0)'; 
+    el.style.opacity = '1';
+    
+    if ([12, 9, 4, 1].includes(remaining)) updateMoon();
+    
+    if (remaining === 11) document.querySelectorAll('#house2 .house-light').forEach(l => l.style.opacity = '0');
+    else if (remaining === 9) document.querySelectorAll('#house3 .house-light').forEach(l => l.style.opacity = '0');
+    else if (remaining === 7) document.querySelectorAll('#house1 .house-light').forEach(l => l.style.opacity = '0');
+    
+    setTimeout(() => {
+        el.style.transition = 'opacity 2.5s ease-out, transform 2.5s ease-out';
+        el.style.opacity = '0'; 
+        el.style.transform = 'scale(0.1)';
+        setTimeout(() => { 
+            target.dead = true; 
+            remaining--; 
+            if (remaining <= 0) endScene(); 
+        }, 2500);
+    }, 100);
+}
+
+function endScene() {
+    if (isEnding) return; 
+    isEnding = true;
+    clearInterval(timerInterval);
+    
+    if (gainNode) {
+        gainNode.gain.cancelScheduledValues(context.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0, context.currentTime + 2.5);
+    }
+
+    stage.style.opacity = '0'; 
+    moon.style.opacity = '0';
+    document.getElementById('ui-layer').style.opacity = '0'; 
+    document.getElementById('bottom-layer').style.opacity = '0'; 
+    flies.forEach(f => { f.el.style.transition = 'opacity 5s'; f.el.style.opacity = '0'; });
+    
+    setTimeout(() => {
+        curtain.style.opacity = '1';
+        setTimeout(() => { 
+            isFinal = true;
+            centerLight.style.transition = 'opacity 3s ease';
+            centerLight.style.opacity = '0';
+            finalU.style.opacity = '1'; 
+            finalU.style.pointerEvents = 'auto'; 
+        }, 6000); 
+    }, 4000);
+}
+
+function initHotaru() {
+    for (let i = 0; i < 14; i++) {
+        const el = document.createElement('div'); 
+        el.className = 'hotaru';
+        el.style.left = (Math.random() * 80 + 10) + '%'; 
+        el.style.top = (Math.random() * 70 + 10) + '%';
+        container.appendChild(el);
+        
+        const fly = { el, a: Math.random() * Math.PI * 2, dying: false, dead: false };
+        flies.push(fly);
+        
+        const move = () => {
+            if (fly.dead) return;
+            fly.a += 0.015;
+            const tx = Math.sin(fly.a) * 15;
+            const ty = Math.cos(fly.a * 0.7) * 15;
+            fly.el.style.transform = `translate(${tx}px, ${ty}px)`;
+            
+            if (!fly.dying && !isEnding) {
+                fly.el.style.opacity = 0.2 + Math.abs(Math.sin(fly.a * 0.5)) * 0.5;
+            }
+            requestAnimationFrame(move);
+        };
+        move();
+    }
+}
+
+// 減速テンポの計算 (Phase 1 -> Phase 2 -> Phase 3)
+function getDynamicTiming() {
+    const elapsed = (Date.now() - sessionStartTime) / 1000;
+    if (elapsed < 30) {
+        return { inhale: 1500, exhale: 2500, next: 4000 };
+    } else if (elapsed < 90) {
+        const progress = (elapsed - 30) / 60;
+        const inhale = 1500 + (1500 * progress);
+        const exhale = 2500 + (3500 * progress);
+        return { inhale, exhale, next: inhale + exhale };
+    } else {
+        return { inhale: 3000, exhale: 6000, next: 10000 };
+    }
+}
+
+function breathe() {
+    if (isFinal) return;
+    const timing = getDynamicTiming();
+    const elapsed = (Date.now() - sessionStartTime) / 1000;
+    const jitter = (elapsed > 90) ? (Math.random() - 0.5) * 1500 : 0;
+
+    centerLight.style.transition = `all ${timing.inhale}ms ease-out`;
+    centerLight.style.opacity = "1.0";
+    centerLight.style.background = "#fffbe0";
+    centerLight.style.boxShadow = "0 0 50px 20px rgba(255, 215, 0, 0.6)";
+    centerLight.style.transform = "translate(-50%, -50%) scale(1.3)";
+
+    setTimeout(() => {
+        if (isFinal) return;
+        centerLight.style.transition = `all ${timing.exhale}ms ease-in-out`;
+        centerLight.style.opacity = "0.05";
+        centerLight.style.background = "#fffde0";
+        centerLight.style.boxShadow = "0 0 10px 5px rgba(255, 215, 0, 0.2)";
+        centerLight.style.transform = "translate(-50%, -50%) scale(0.7)";
+
+        const waitTime = Math.max(100, (timing.next - timing.inhale - timing.exhale) + 1000 + jitter);
+        setTimeout(breathe, waitTime);
+    }, timing.inhale + 500);
+}
+
+initHotaru();
+breathe();
+timerInterval = setInterval(updateTimer, 1000);
+
+window.addEventListener('load', () => {
+    // Breath Overlay Logic
+    const breathOverlay = document.getElementById('breath-overlay');
+    if (breathOverlay) {
+        setTimeout(() => { 
+            breathOverlay.style.transition = "opacity 0.5s ease";
+            breathOverlay.style.opacity = 1; 
+        }, 100);
+        
+        const dismissBreath = () => {
+            if (!breathOverlay.parentElement) return; 
+            breathOverlay.style.transition = "opacity 1s ease";
+            breathOverlay.style.opacity = 0;
+            setTimeout(() => { breathOverlay.remove(); }, 1000);
+            window.removeEventListener('touchstart', dismissBreath);
+            window.removeEventListener('mousedown', dismissBreath);
+        };
+        
+        // 0.5s (fade-in) + 3s (keep) = 3.5s
+        setTimeout(dismissBreath, 3600);
+        window.addEventListener('touchstart', dismissBreath);
+        window.addEventListener('mousedown', dismissBreath);
+    }
+});
+
+document.getElementById('help-btn').addEventListener('pointerdown', (e) => { 
+    e.stopPropagation(); 
+    crisisOverlay.style.display = 'flex'; 
+});
+
+document.getElementById('close-crisis').addEventListener('pointerdown', (e) => { 
+    e.stopPropagation(); 
+    crisisOverlay.style.display = 'none'; 
+});
+
+timerBtn.addEventListener('pointerdown', (e) => { 
+    e.stopPropagation(); 
+    timerMenu.style.display = (timerMenu.style.display === 'flex') ? 'none' : 'flex'; 
+});
+
+document.querySelectorAll('.menu-item').forEach(item => {
+    item.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        timeLeft = parseInt(item.getAttribute('data-sec'));
+        timerDisplay.textContent = formatTime(timeLeft);
+        timerMenu.style.display = 'none';
+        startAudio();
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(updateTimer, 1000);
+    });
+});
+
+window.addEventListener('pointerdown', () => { 
+    timerMenu.style.display = 'none'; 
+});
+
+document.getElementById('tap-area').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    startAudio(); 
+    if (!isEnding) killOne();
+});
+
+function navigateWithFade(targetUrl) {
+    if (isEnding && !isFinal) return; // すでに終了シーケンス中の場合は無視（ただし最後の選択肢は有効）
+    
+    curtain.style.pointerEvents = 'auto'; 
+    curtain.style.opacity = '1'; 
+    if (gainNode && context) {
+        try {
+            gainNode.gain.cancelScheduledValues(context.currentTime);
+            gainNode.gain.setValueAtTime(gainNode.gain.value, context.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0, context.currentTime + 3);
+        } catch(e) { console.error(e); }
+    }
+    setTimeout(() => { window.location.href = targetUrl; }, 3500); 
+}
+
+document.getElementById('exit-link').addEventListener('click', (e) => {
+    e.preventDefault(); 
+    navigateWithFade("talk_trial.html");
+});
+
+document.getElementById('top-close-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    navigateWithFade("index_trial_bk_2.html");
+});
+
+document.querySelectorAll('.final-nav-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        navigateWithFade(link.getAttribute('href'));
+    });
+});
+</script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="gift_logging_script.js"></script>
+</body>
+</html>

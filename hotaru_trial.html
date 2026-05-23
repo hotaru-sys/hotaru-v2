@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Routine Edition|trial</title>
+    <meta name="description" content="hotaru - 光が寄り添う。蛍の光に息を整えたり、指でタップしたりしながら夜過ごすの時間。">
+    <link rel="manifest" href="manifest.json">
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NQ2CZMJXCS"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        // SupabaseのセッションからUser IDを取得してGA4に紐付け（SHA-256で匿名化）
+        async function setHashedUserId() {
+            const sbAuthToken = localStorage.getItem('sb-ubnqbpsbtmdplmlivxbj-auth-token');
+            let userId = null;
+            if (sbAuthToken) {
+                try { userId = JSON.parse(sbAuthToken).user?.id; } catch (e) { }
+            }
+
+            if (userId) {
+                const msgUint8 = new TextEncoder().encode(userId);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashedId = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                gtag('config', 'G-NQ2CZMJXCS', { 'user_id': hashedId });
+            } else {
+                gtag('config', 'G-NQ2CZMJXCS');
+            }
+        }
+        setHashedUserId();
+    </script>
+
+    <style>
+        * {
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        select,
+        a,
+        #crisis-trigger,
+        .crisis-link,
+        #close-crisis {
+            touch-action: manipulation;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: "Hiragino Mincho ProN", "serif";
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: #000 url("hotaru_horizon.png") center bottom / cover no-repeat;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #hotaru-wrapper {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 1px;
+            height: 1px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #hotaru-core {
+            width: 32px;
+            height: 32px;
+            background: #fffde0;
+            border-radius: 50%;
+            box-shadow: 0 0 35px 15px rgba(255, 215, 0, 0.5);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            opacity: 0.15;
+            z-index: 20;
+        }
+
+        #hotaru-glow {
+            width: 140px;
+            height: 140px;
+            background: transparent;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(1.0);
+            opacity: 0;
+            z-index: 15;
+            transition: opacity 6.0s linear, transform 6.0s linear, box-shadow 6.0s linear;
+        }
+
+        .active #hotaru-glow {
+            opacity: 1;
+            box-shadow: 0 0 220px 110px rgba(180, 220, 255, 0.4), 0 0 140px 70px rgba(255, 230, 150, 0.3);
+            transform: translate(-50%, -50%) scale(5.5);
+            transition: opacity 3.0s linear, transform 3.0s linear, box-shadow 3.0s linear;
+        }
+
+        #settings-ui {
+            position: fixed;
+            top: 5%;
+            right: 5%;
+            z-index: 300;
+            display: block;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+            text-align: right;
+        }
+
+        #mode-select {
+            background: #000;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 5px;
+            font-family: inherit;
+            outline: none;
+            margin-top: 5px;
+        }
+
+        #init-guide {
+            position: fixed;
+            width: 80%;
+            left: 10%;
+            text-align: center;
+            top: 20%;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+            opacity: 0;
+            transition: opacity 3s;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #hal-display {
+            position: fixed;
+            bottom: 20%;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.2rem;
+            opacity: 0;
+            transition: opacity 2s;
+            z-index: 100;
+            cursor: pointer;
+            pointer-events: none;
+        }
+
+        .bottom-ui-link {
+            position: fixed;
+            bottom: 10%;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1.0rem;
+            text-decoration: none;
+            opacity: 0;
+            transition: opacity 2.5s;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            padding-bottom: 4px;
+            pointer-events: none;
+        }
+
+        #exit-link {
+            right: 8%;
+        }
+
+        #word-link {
+            left: 8%;
+        }
+
+        #top-left-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            padding: 20px;
+            z-index: 800;
+            pointer-events: none;
+            transition: opacity 2s;
+        }
+
+        #help-btn {
+            display: inline-block;
+            pointer-events: auto;
+            color: rgba(255, 200, 200, 0.6);
+            text-decoration: none;
+            font-size: 0.8rem;
+            border: 1px solid rgba(255, 150, 150, 0.3);
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #ios-a2hs-prompt {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 12px;
+            z-index: 1000;
+            text-align: center;
+            font-size: 0.9rem;
+            width: 90%;
+            max-width: 350px;
+        }
+
+        #ios-a2hs-prompt p { margin: 0 0 10px 0; }
+        
+        #close-a2hs {
+            cursor: pointer;
+            text-decoration: underline;
+            color: rgba(255,255,255,0.7);
+        }
+
+        #crisis-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            backdrop-filter: blur(8px);
+        }
+
+        .crisis-content {
+            width: 100%;
+            max-width: 320px;
+            text-align: center;
+        }
+
+        .crisis-link {
+            display: block;
+            width: 100%;
+            padding: 18px;
+            margin: 12px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        #fade-out-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1500;
+            transition: opacity 1.5s ease-in;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+
+        .star {
+            position: absolute;
+            background: #fff;
+            border-radius: 50%;
+            opacity: 0;
+            animation: twinkle 5s infinite;
+        }
+
+        #breath-overlay {
+            position: fixed;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 1.2rem;
+            letter-spacing: 0.2em;
+            opacity: 0;
+            z-index: 1000;
+            text-align: center;
+            width: 100%;
+            pointer-events: auto;
+            transition: opacity 0.5s ease;
+            font-family: inherit;
+        }
+
+        /* 星空用のキャンバス */
+        #star-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body oncontextmenu="return false;">
+
+    <canvas id="star-canvas"></canvas>
+    <div id="fade-out-overlay">今日は静かにゆっくりと</div>
+    <div id="breath-overlay">まず、息を一回だけ。</div>
+    <div id="init-guide">触れて呼吸を整えてもいいし、<br>そのまま見ていても大丈夫です。</div>
+
+    <div id="settings-ui">
+        揺らぎ設定<br>
+        <select id="mode-select" onchange="changeMode(this.value)">
+            <option value="hybrid">寄り添う光</option>
+            <option value="natural">自然な光 (1/f)</option>
+        </select>
+    </div>
+
+    <div id="crisis-overlay">
+        <div class="crisis-content">
+            <div class="crisis-title">お困りのときは</div>
+            <a href="https://talkme.jp/" target="_blank" class="crisis-link">チャットで相談する</a>
+            <a href="tel:0570064556" class="crisis-link">電話で相談する</a>
+            <a href="tel:119" class="crisis-link" style="color: #ff9999;">救急車 (119)</a>
+            <div id="close-crisis" style="color:#fff; cursor:pointer; margin-top:20px; text-decoration:underline;">戻る
+            </div>
+        </div>
+    </div>
+
+    <div id="hal-display" onclick="handleNavigation('https://hotaru-light.jp/talk_trial')"></div>
+    <a href="index_trial_bk_2.html" id="exit-link" class="bottom-ui-link">今日を閉じる</a>
+    <a href="https://hotaru-light.jp/talk_trial" id="word-link" class="bottom-ui-link">言葉にしてみる</a>
+    
+    <div id="ios-a2hs-prompt">
+        <p>「共有」ボタンをタップして<br>「ホーム画面に追加」すると<br>アプリとしてご利用いただけます。</p>
+        <span id="close-a2hs">閉じる</span>
+    </div>
+
+    <div id="top-left-layer"
+        style="position: fixed; top: 0; left: 0; padding: 20px; z-index: 800; pointer-events: none;">
+        <div id="help-btn" style="pointer-events: auto;">相談窓口</div>
+    </div>
+    <div id="bottom-right-nav" style="position: fixed; bottom: 30px; right: 20px; z-index: 800;">
+        <a href="talk_trial"
+            style="color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.2); padding: 8px 16px; background: rgba(0,0,0,0.1);">言葉にするに進む</a>
+    </div>
+
+    <div id="canvas-container">
+        <div id="hotaru-wrapper">
+            <div id="hotaru-glow"></div>
+            <div id="hotaru-core"></div>
+        </div>
+    </div>
+
+    <script>
+        const core = document.getElementById('hotaru-core');
+        const wrapper = document.getElementById('hotaru-wrapper');
+        const display = document.getElementById('hal-display');
+        const exitLink = document.getElementById('exit-link');
+        const wordLink = document.getElementById('word-link');
+        const overlay = document.getElementById('fade-out-overlay');
+        const container = document.getElementById('canvas-container');
+
+        let currentMode = 'hybrid';
+        let isEnded = false;
+        let x_val = Math.random();
+
+        function get1f() {
+            x_val = (x_val < 0.5) ? x_val + 2 * x_val * x_val : x_val - 2 * (1 - x_val) * (1 - x_val);
+            return Math.min(Math.max(x_val, 0.15), 0.95);
+        }
+
+        // 減速テンポの計算 (Phase 1 -> Phase 2 -> Phase 3)
+        function getDynamicTiming() {
+            const elapsed = (Date.now() - sessionStartTime) / 1000;
+            if (elapsed < 30) {
+                // Phase 1: ~4s cycle
+                return { inhale: 1500, exhale: 2500, next: 4000 };
+            } else if (elapsed < 90) {
+                // Phase 2: Linear interpolation 4s -> 10s
+                const progress = (elapsed - 30) / 60;
+                const inhale = 1500 + (1500 * progress); // 1.5s -> 3s
+                const exhale = 2500 + (3500 * progress); // 2.5s -> 6s
+                return { inhale, exhale, next: inhale + exhale };
+            } else {
+                // Phase 3: 10s cycle
+                return { inhale: 3000, exhale: 6000, next: 10000 };
+            }
+        }
+
+        // 1/f モードを反映させた breathe 関数
+        function breathe() {
+            if (isEnded) return;
+
+            if (currentMode === 'hybrid') {
+                const elapsed = (Date.now() - sessionStartTime) / 1000;
+                const timing = getDynamicTiming();
+                // Phase 3 に入ったら微小な1/fゆらぎを付与
+                const jitter = (elapsed > 90) ? (get1f() - 0.5) * 1500 : 0;
+
+                // 吸気
+                core.style.transition = `all ${timing.inhale}ms ease-out`;
+                core.style.opacity = "1.0";
+                core.style.transform = "translate(-50%, -50%) scale(1.3)";
+                core.style.boxShadow = "0 0 50px 20px rgba(255, 215, 0, 0.6)";
+
+                setTimeout(() => {
+                    if (isEnded) return;
+                    // 呼気
+                    core.style.transition = `all ${timing.exhale}ms ease-in-out`;
+                    core.style.opacity = "0.05";
+                    core.style.transform = "translate(-50%, -50%) scale(0.7)";
+                    core.style.boxShadow = "0 0 10px 5px rgba(255, 215, 0, 0.2)";
+
+                    // 次の呼吸までの待機時間を調整
+                    const waitTime = Math.max(100, (timing.next - timing.inhale - timing.exhale) + 1000 + jitter);
+                    setTimeout(breathe, waitTime);
+                }, timing.inhale + 500);
+            } else {
+                // 1/f ゆらぎリズム (Natural Mode)
+                const f = get1f();
+                const duration = 1500 + (f * 4000); // 少しテンポを速めて動きを出しやすく
+                const scale = 0.5 + (f * 1.3);     // 0.5x 〜 1.8x の大幅な変化
+                const driftX = (Math.random() - 0.5) * 30; // 左右に最大15pxの揺れ
+                const driftY = (Math.random() - 0.5) * 30; // 上下に最大15pxの揺れ
+                const glowIntensity = 10 + (f * 40);       // 光の広がり
+
+                core.style.transition = `all ${duration}ms ease-in-out`;
+                core.style.opacity = 0.1 + (f * 0.85);     // 0.1 〜 0.95 の明滅
+                core.style.transform = `translate(calc(-50% + ${driftX}px), calc(-50% + ${driftY}px)) scale(${scale})`;
+                core.style.boxShadow = `0 0 ${glowIntensity}px ${glowIntensity / 2}px rgba(255, 215, 0, ${0.2 + (f * 0.4)})`;
+                
+                setTimeout(breathe, duration + 100);
+            }
+        }
+
+        function changeMode(m) {
+            currentMode = m;
+            gtag('event', 'change_mode', { event_category: 'hotaru_paid', event_label: m });
+        }
+
+        let sessionStartTime = Date.now(), tapCount = 0, halSpoke = false;
+
+        function showOnlyWord() {
+            if (halSpoke || isEnded) return;
+            halSpoke = true;
+            display.textContent = "言葉にするに進みませんか？";
+            display.style.opacity = 1; display.style.pointerEvents = "auto";
+            wordLink.style.opacity = 0.8; wordLink.style.pointerEvents = "auto";
+        }
+
+        function trigger(e) {
+            if (e.target.closest('.bottom-ui-link') || e.target.id === 'mode-select') return;
+            if (e.type === 'touchstart') e.preventDefault();
+            wrapper.classList.add('active');
+            tapCount++;
+            if (tapCount >= 50 && !halSpoke) showOnlyWord();
+        }
+
+        function handleNavigation(url) {
+            isEnded = true;
+            overlay.style.pointerEvents = "auto";
+            overlay.style.opacity = 1;
+            setTimeout(() => { window.location.href = url.replace('.html', ''); }, 1550);
+        }
+
+        window.addEventListener('load', () => {
+            breathe();
+            setupStars();
+
+            // Service Worker Registration
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').then(() => {
+                    console.log('Service Worker Registered');
+                });
+            }
+
+            // Breath Overlay Logic
+            const breathOverlay = document.getElementById('breath-overlay');
+            if (breathOverlay) {
+                setTimeout(() => { breathOverlay.style.opacity = 1; }, 100);
+
+                const dismissBreath = () => {
+                    breathOverlay.style.transition = "opacity 1s ease";
+                    breathOverlay.style.opacity = 0;
+                    setTimeout(() => { breathOverlay.remove(); }, 1000);
+                    container.removeEventListener('touchstart', dismissBreath);
+                    container.removeEventListener('click', dismissBreath);
+                };
+
+                setTimeout(dismissBreath, 3500);
+                container.addEventListener('touchstart', dismissBreath);
+                container.addEventListener('click', dismissBreath);
+            }
+
+            // Init Guide Logic
+            setTimeout(() => { document.getElementById('init-guide').style.opacity = 1; }, 4000);
+            setTimeout(() => { document.getElementById('init-guide').style.opacity = 0; }, 10000);
+            
+            // iOS A2HS Prompt Logic
+            const isIos = () => {
+                const userAgent = window.navigator.userAgent.toLowerCase();
+                return /iphone|ipad|ipod/.test(userAgent);
+            };
+            const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+            
+            if (isIos() && !isInStandaloneMode()) {
+                const prompt = document.getElementById('ios-a2hs-prompt');
+                setTimeout(() => { prompt.style.display = 'block'; }, 5000); // Show after 5 seconds
+                
+                document.getElementById('close-a2hs').addEventListener('click', () => {
+                    prompt.style.display = 'none';
+                });
+            }
+        });
+
+        container.addEventListener('touchstart', trigger, { passive: false });
+        container.addEventListener('touchend', () => wrapper.classList.remove('active'));
+
+        setInterval(() => {
+            if (!isEnded && Date.now() - sessionStartTime > 120000) {
+                exitLink.style.opacity = 0.8; exitLink.style.pointerEvents = "auto";
+                if (!halSpoke) showOnlyWord();
+            }
+        }, 1000);
+
+        document.getElementById('help-btn')?.addEventListener('click', () => {
+            document.getElementById('crisis-overlay').style.display = 'flex';
+        });
+
+        document.getElementById('close-crisis')?.addEventListener('click', () => {
+            document.getElementById('crisis-overlay').style.display = 'none';
+        });
+
+        function setupStars() {
+            const canvas = document.getElementById('star-canvas');
+            const ctx = canvas.getContext('2d');
+            let stars = [];
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                initStars();
+            }
+
+            function initStars() {
+                stars = [];
+                for (let i = 0; i < 150; i++) {
+                    stars.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height * 0.7, // 地平線より上に多く配置
+                        size: Math.random() * 1.2 + 0.5, // 視認性を上げるため少し大きく（0.5px〜1.7px）
+                        opacity: Math.random() * 0.8,
+                        // 完全に止まる星が出ないよう、最低速度を保証
+                        twinkle: (Math.random() * 0.006 + 0.003) * (Math.random() < 0.5 ? 1 : -1)
+                    });
+                }
+            }
+
+            function animate() {
+                if (isEnded) return;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                stars.forEach(star => {
+                    star.opacity += star.twinkle;
+                    // 透明度の振れ幅を0(完全に見えない)〜0.8(かなり明るい)に拡大
+                    if (star.opacity > 0.8) {
+                        star.opacity = 0.8;
+                        star.twinkle *= -1;
+                    } else if (star.opacity < 0.0) {
+                        star.opacity = 0.0;
+                        star.twinkle *= -1;
+                    }
+                    ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                requestAnimationFrame(animate);
+            }
+
+            window.addEventListener('resize', resize);
+            resize();
+            animate();
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="gift_logging_script.js"></script>
+</body>
+
+</html>

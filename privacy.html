@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>プライバシーポリシー | hotaru</title>
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NQ2CZMJXCS"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      // SupabaseのセッションからUser IDを取得してGA4に紐付け（SHA-256で匿名化）
+      async function setHashedUserId() {
+        const sbAuthToken = localStorage.getItem('sb-ubnqbpsbtmdplmlivxbj-auth-token');
+        let userId = null;
+        if (sbAuthToken) {
+          try { userId = JSON.parse(sbAuthToken).user?.id; } catch (e) {}
+        }
+
+        if (userId) {
+          const msgUint8 = new TextEncoder().encode(userId);
+          const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          const hashedId = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+          gtag('config', 'G-NQ2CZMJXCS', { 'user_id': hashedId });
+        } else {
+          gtag('config', 'G-NQ2CZMJXCS');
+        }
+      }
+      setHashedUserId();
+    </script>
+
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            margin: 0; padding: 0;
+            background-color: #000;
+            color: rgba(255, 255, 255, 0.85);
+            font-family: "Hiragino Mincho ProN", "YuMincho", serif;
+            line-height: 2.1;
+            letter-spacing: 0.08em;
+            overflow-x: hidden;
+        }
+
+        .bg-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background-image: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('IMG_2116.jpg');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 60px 25px 120px;
+        }
+
+        .fade-in {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 1.5s ease-out, transform 1.5s ease-out;
+        }
+        .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+        h1 {
+            font-size: 1.1rem; font-weight: 400; letter-spacing: 0.4em;
+            text-align: center; margin-bottom: 60px; color: #fff;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 0.95rem; font-weight: 400; color: #fff;
+            margin-top: 50px; margin-bottom: 20px;
+            border-left: 1px solid rgba(255,255,255,0.4);
+            padding-left: 15px;
+            letter-spacing: 0.15em;
+        }
+
+        p, ul {
+            font-size: 0.85rem; margin-bottom: 25px;
+        }
+
+        ul { padding-left: 0; list-style: none; }
+        ul li { margin-bottom: 15px; position: relative; padding-left: 20px; }
+        ul li::before {
+            content: '・'; position: absolute; left: 0; color: rgba(255,255,255,0.4);
+        }
+
+        .date {
+            text-align: right; font-size: 0.75rem; color: rgba(255,255,255,0.4);
+            margin-bottom: 40px;
+        }
+
+        footer {
+            margin-top: 80px; text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 40px;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: rgba(255,255,255,0.6);
+            text-decoration: none;
+            font-size: 0.8rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 10px 30px;
+            transition: 0.4s;
+            margin-bottom: 40px;
+        }
+        .back-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        .contact { font-size: 0.75rem; color: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body>
+
+<div class="bg-overlay"></div>
+
+<div class="container fade-in">
+    <div class="date">最終更新日：2026年4月15日</div>
+    <h1>プライバシーポリシー</h1>
+
+    <section>
+        <h2>1. はじめに</h2>
+        <p>
+            hotaru運営者（以下「運営者」）は、本サービスにおける個人情報の取り扱いについて、以下の通り定めます。
+        </p>
+    </section>
+
+    <section>
+        <h2>2. 取得する情報</h2>
+        <ul>
+            <li>LINEの友だち登録をされた場合：LINEが提供するユーザー識別情報（LINEの表示名、プロフィール画像）</li>
+            <li>本サービスへのアクセスログ（IPアドレス、ブラウザ情報等）</li>
+            <li>サービス改善のための利用状況に関する匿名の統計情報（メッセージ送信回数、セッション時間等）。会話の内容そのものは取得しません。</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>3. 取得しない情報</h2>
+        <ul>
+            <li>本サービスにおける会話内容は、運営者側では保存・取得していません。</li>
+            <li>氏名・住所・電話番号等の個人を直接特定できる情報は収集していません。</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>4. 情報の利用目的</h2>
+        <ul>
+            <li>サービスの運営・改善</li>
+            <li>不正利用の防止</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>5. 第三者への提供</h2>
+        <p>
+            取得した情報は、法令に基づく場合を除き、第三者に提供しません。
+        </p>
+    </section>
+
+    <section>
+        <h2>6. LINEプラットフォームについて</h2>
+        <p>
+            本サービスはLINEを経由して提供される機能を含みます。LINEプラットフォーム上でのデータ取り扱いについては、LINE株式会社のプライバシーポリシーが適用されます。
+        </p>
+    </section>
+
+    <section>
+        <h2>7. Cookie・アクセス解析について</h2>
+        <p>
+            本サービスでは、サービス改善のためGoogle Analyticsを使用しています。Google AnalyticsはCookieを使用して利用状況（ページの表示回数、滞在時間、流入元等）を収集しますが、個人を特定する情報は収集しません。詳細はGoogleのプライバシーポリシーをご参照ください。
+        </p>
+    </section>
+
+    <section>
+        <h2>8. PWA（Progressive Web App）について</h2>
+        <p>
+            正式ローンチ後、本サービスはPWAとして提供される予定です。PWAにおいても、本ポリシーに定める範囲を超える個人情報の取得は行いません。
+        </p>
+    </section>
+
+    <section>
+        <h2>9. 検証アンケートについて</h2>
+        <p>
+            本サービスの改善のため、Googleフォームを用いたアンケートを実施する場合があります。アンケートではメールアドレス等の個人情報の入力は求めません。
+        </p>
+    </section>
+
+    <section>
+        <h2>10. プライバシーポリシーの変更</h2>
+        <p>
+            本ポリシーは、予告なく変更される場合があります。変更後のポリシーは本ページに掲載した時点で効力を生じます。
+        </p>
+    </section>
+
+    <footer>
+        <a href="index_trial_v2.html" class="back-link">戻る</a>
+        <div class="contact">お問い合わせ：hotaru.light.jp@gmail.com</div>
+    </footer>
+</div>
+
+<script>
+    window.addEventListener('load', () => {
+        document.querySelector('.fade-in').classList.add('visible');
+    });
+</script>
+
+</body>
+</html>

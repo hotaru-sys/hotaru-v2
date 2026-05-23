@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>hotaru — なごりを消すへ</title>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-NQ2CZMJXCS"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    // SupabaseのセッションからUser IDを取得してGA4に紐付け（SHA-256で匿名化）
+    async function setHashedUserId() {
+      const sbAuthToken = localStorage.getItem('sb-ubnqbpsbtmdplmlivxbj-auth-token');
+      let userId = null;
+      if (sbAuthToken) {
+        try { userId = JSON.parse(sbAuthToken).user?.id; } catch (e) {}
+      }
+
+      if (userId) {
+        const msgUint8 = new TextEncoder().encode(userId);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashedId = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        gtag('config', 'G-NQ2CZMJXCS', { 'user_id': hashedId });
+      } else {
+        gtag('config', 'G-NQ2CZMJXCS');
+      }
+    }
+    setHashedUserId();
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500&family=Zen+Kaku+Gothic+New:wght@300&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0b0c10;
+      --glow: #c8a96e;
+      --text: #d4c9b5;
+      --sub: #7a7060;
+      --line-green: #00b900;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Shippori Mincho', serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      overflow: hidden;
+    }
+
+    /* firefly particles */
+    .fireflies {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .ff {
+      position: absolute;
+      width: 3px; height: 3px;
+      border-radius: 50%;
+      background: var(--glow);
+      box-shadow: 0 0 6px 2px #c8a96e88;
+      animation: drift var(--d, 8s) ease-in-out infinite var(--delay, 0s);
+      opacity: 0;
+    }
+
+    @keyframes drift {
+      0%   { transform: translate(0, 0) scale(0.4); opacity: 0; }
+      20%  { opacity: 0.9; }
+      50%  { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 0.6; }
+      80%  { opacity: 0.3; }
+      100% { transform: translate(calc(var(--tx) * 1.4), calc(var(--ty) * 0.3)) scale(0.2); opacity: 0; }
+    }
+
+    /* main card */
+    .card {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 3rem 2rem;
+      max-width: 380px;
+      width: 90%;
+      animation: fadein 1.6s ease both;
+    }
+
+    @keyframes fadein {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .flame {
+      font-size: 2.2rem;
+      margin-bottom: 2rem;
+      display: block;
+      filter: drop-shadow(0 0 10px #c8a96e99);
+      animation: flicker 3s ease-in-out infinite;
+    }
+    @keyframes flicker {
+      0%, 100% { opacity: 1; filter: drop-shadow(0 0 10px #c8a96e99); }
+      45%       { opacity: 0.8; filter: drop-shadow(0 0 4px #c8a96e55); }
+      50%       { opacity: 0.95; filter: drop-shadow(0 0 14px #c8a96ecc); }
+    }
+
+    .heading {
+      font-size: 1.05rem;
+      font-weight: 500;
+      line-height: 2.1;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      margin-bottom: 1.6rem;
+    }
+
+    .note {
+      font-family: 'Zen Kaku Gothic New', sans-serif;
+      font-weight: 300;
+      font-size: 0.72rem;
+      color: var(--sub);
+      line-height: 1.9;
+      letter-spacing: 0.04em;
+      margin-bottom: 2.4rem;
+    }
+
+    .divider {
+      width: 40px;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--sub), transparent);
+      margin: 0 auto 2rem;
+    }
+
+    /* progress bar */
+    .progress-wrap {
+      width: 100%;
+      height: 1px;
+      background: #2a2820;
+      border-radius: 1px;
+      margin-bottom: 1.2rem;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(to right, #7a6040, var(--glow));
+      border-radius: 1px;
+      transition: width 0.1s linear;
+    }
+
+    .redirect-note {
+      font-family: 'Zen Kaku Gothic New', sans-serif;
+      font-weight: 300;
+      font-size: 0.65rem;
+      color: #4a4538;
+      letter-spacing: 0.05em;
+    }
+
+    /* manual link fallback */
+    .manual-link {
+      display: inline-block;
+      margin-top: 2rem;
+      font-family: 'Zen Kaku Gothic New', sans-serif;
+      font-size: 0.65rem;
+      color: var(--sub);
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid #3a3628;
+      padding-bottom: 1px;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    .manual-link.visible { opacity: 1; }
+    .manual-link:hover { color: var(--glow); border-color: var(--glow); }
+  </style>
+</head>
+<body>
+
+<div class="fireflies" id="ff"></div>
+
+<div class="card">
+  <span class="flame">𖤓</span>
+
+  <p class="heading">
+    ここから深い夜へ。<br>
+    横になりながら深い夜を迎える方は、<br>
+    画面を広くして没入してみてください。<br>  
+　　ただ置いておくだけでもいい。<br>
+　　静かに光と音を消してもいい。
+
+  </p>
+
+  <div class="divider"></div>
+
+<p class="note">
+  【iPhoneの方へ】<br>
+  今宵の夜は縦へと続いています。<br>
+  画面を縦にして、静かに光と音を消してみてください。
+</p>
+
+  <div class="progress-wrap">
+    <div class="progress-bar" id="bar"></div>
+  </div>
+  <p class="redirect-note" id="counter">まもなく移動します…</p>
+
+  <a class="manual-link" id="manual" href="https://hotaru-light.jp/isolation_trial" onclick="gtag('event', 'click_isolation_manual', { 'event_category': 'navigation', 'event_label': 'manual_click' });">
+    移動しない場合はこちらをタップ
+  </a>
+</div>
+
+<script>
+  // fireflies
+  const container = document.getElementById('ff');
+  for (let i = 0; i < 22; i++) {
+    const el = document.createElement('div');
+    el.className = 'ff';
+    el.style.cssText = `
+      left: ${Math.random() * 100}%;
+      top:  ${Math.random() * 100}%;
+      --d:  ${6 + Math.random() * 8}s;
+      --delay: ${Math.random() * 6}s;
+      --tx: ${(Math.random() - 0.5) * 120}px;
+      --ty: ${(Math.random() - 0.5) * 120}px;
+    `;
+    container.appendChild(el);
+  }
+
+  // --- 追加：Android/PC向けフルスクリーン化処理 ---
+  // ユーザーがどこかを一回でもタップしたら全画面を試みる
+  document.body.addEventListener('click', () => {
+    const docElm = document.documentElement;
+    if (docElm.requestFullscreen) {
+      docElm.requestFullscreen().catch(() => {});
+    } else if (docElm.webkitRequestFullscreen) {
+      docElm.webkitRequestFullscreen();
+    }
+  }, { once: true });
+
+  // countdown & redirect
+  // 修正：遷移先を isolation_trial に合わせて変更
+  const REDIRECT_URL = 'https://hotaru-light.jp/isolation_trial';
+  const DURATION = 4000; // ms
+  const bar     = document.getElementById('bar');
+  const counter = document.getElementById('counter');
+  const manual  = document.getElementById('manual');
+
+  // なごりを消すへの自動遷移計測イベントの送信
+  gtag('event', 'click_isolation_auto', { 'event_category': 'navigation', 'event_label': 'auto_redirect' });
+
+  const start = performance.now();
+
+  function tick(now) {
+    const elapsed = now - start;
+    const pct = Math.min(elapsed / DURATION * 100, 100);
+    bar.style.width = pct + '%';
+
+    const remaining = Math.ceil((DURATION - elapsed) / 1000);
+    if (remaining > 0) {
+      counter.textContent = `${remaining}秒後になごりを消すへ移動します`;
+    } else {
+      counter.textContent = '移動しています…';
+    }
+
+    if (elapsed >= DURATION) {
+      window.location.href = REDIRECT_URL;
+      return;
+    }
+    requestAnimationFrame(tick);
+  }
+
+  requestAnimationFrame(tick);
+
+  // show manual link after 2s
+  setTimeout(() => manual.classList.add('visible'), 2000);
+</script>
+</body>
+</html>

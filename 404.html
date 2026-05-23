@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>道に迷いました - hotaru</title>
+    <style>
+        /* hotaruの世界観：深い夜と静寂 */
+        body {
+            background-color: #0c0e15;
+            color: #d1d5db;
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        /* ほたるの光：ゆっくりとした明滅 */
+        .hotaru-light {
+            width: 20px;
+            height: 20px;
+            background-color: #fef08a;
+            border-radius: 50%;
+            margin-bottom: 40px;
+            filter: blur(4px);
+            box-shadow: 0 0 15px #fef08a;
+            animation: breathe 4s infinite ease-in-out;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(0.8); opacity: 0.4; filter: blur(3px); }
+            50% { transform: scale(1.2); opacity: 1; filter: blur(6px); }
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 300;
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.1em;
+        }
+
+        p {
+            font-size: 0.95rem;
+            line-height: 1.8;
+            margin-bottom: 4rem;
+            opacity: 0.8;
+            font-weight: 300;
+        }
+
+        /* 戻るボタン：控えめな案内板 */
+        .back-home {
+            color: #fef08a;
+            text-decoration: none;
+            font-size: 0.85rem;
+            border: 1px solid rgba(254, 240, 138, 0.2);
+            padding: 10px 30px;
+            border-radius: 30px;
+            transition: all 0.4s ease;
+        }
+
+        .back-home:hover {
+            background-color: rgba(254, 240, 138, 0.05);
+            border-color: rgba(254, 240, 138, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hotaru-light"></div>
+
+    <h1>道に迷いました。</h1>
+
+    <p>
+        ここは、まだ明かりが灯っていない場所のようです。<br>
+        焦らなくても大丈夫です。少し深呼吸してから、<br>
+        また歩き出しませんか？
+    </p>
+
+    <a href="index_trial_bk_2.html" class="back-home">明かりのある方へ戻る</a>
+
+</body>
+</html>

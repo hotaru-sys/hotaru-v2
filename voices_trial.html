@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>声を綴る｜hotaru</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NQ2CZMJXCS"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        // SupabaseのセッションからUser IDを取得してGA4に紐付け（SHA-256で匿名化）
+        async function setHashedUserId() {
+            const sbAuthToken = localStorage.getItem('sb-ubnqbpsbtmdplmlivxbj-auth-token');
+            let userId = null;
+            if (sbAuthToken) {
+                try { userId = JSON.parse(sbAuthToken).user?.id; } catch (e) { }
+            }
+
+            if (userId) {
+                const msgUint8 = new TextEncoder().encode(userId);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashedId = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                gtag('config', 'G-NQ2CZMJXCS', { 'user_id': hashedId });
+            } else {
+                gtag('config', 'G-NQ2CZMJXCS');
+            }
+        }
+        setHashedUserId();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --text-color: #e8e0d0;
+            --accent-color: rgba(232, 224, 208, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            min-height: 100%;
+            background-color: var(--bg-color);
+            /* 揺れ防止のため横スクロールのみ禁止 */
+            overflow-x: hidden;
+            touch-action: manipulation; /* ダブルタップズームを抑制 */
+        }
+
+        body {
+            background: linear-gradient(to bottom, #0d1117, #1c1f2e, #2a2420);
+            background-attachment: fixed;
+            background-size: cover;
+            font-family: 'Noto Serif JP', serif;
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: calc(1.5rem + env(safe-area-inset-top)) 1.25rem 2rem;
+        }
+
+        /* 終了するボタン */
+        #nav-exit {
+            align-self: flex-start;
+            font-size: 0.8rem;
+            color: rgba(232, 224, 208, 0.7);
+            text-decoration: none;
+            letter-spacing: 0.1em;
+            border: 1px solid rgba(232, 224, 208, 0.15);
+            padding: 0.4rem 1rem;
+            border-radius: 2rem;
+            margin-bottom: 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            z-index: 100;
+        }
+
+        #container {
+            width: 100%;
+            max-width: 450px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2.5rem;
+            flex: 1;
+        }
+
+        /* 閲覧エリア */
+        #voice-display-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            min-height: 220px;
+            justify-content: center;
+        }
+
+        .voice-card {
+            text-align: center;
+            line-height: 1.8;
+            letter-spacing: 0.05em;
+            font-size: 0.9rem;
+            opacity: 0;
+            padding: 1.2rem;
+            border: 1px solid rgba(232, 224, 208, 0.05);
+            border-radius: 0.8rem;
+            background: rgba(232, 224, 208, 0.03);
+            filter: blur(5px);
+            transition: all 1.8s ease;
+        }
+
+        .voice-card.visible {
+            opacity: 1;
+            filter: blur(0);
+        }
+
+        .content-limit {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .more-indicator {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--accent-color);
+            margin-top: 0.4rem;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        /* ボタン */
+        .btn {
+            background: transparent;
+            border: 1px solid var(--accent-color);
+            color: var(--text-color);
+            padding: 0.6rem 2rem;
+            border-radius: 2rem;
+            font-family: inherit;
+            font-size: 0.85rem;
+            cursor: pointer;
+            letter-spacing: 0.1em;
+            transition: 0.3s;
+            z-index: 10;
+        }
+
+        /* 投稿エリア */
+        #input-section {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            margin-top: auto; /* 下部に配置 */
+            padding-bottom: 1rem;
+        }
+
+        textarea {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(232, 224, 208, 0.15);
+            border-radius: 0.5rem;
+            color: var(--text-color);
+            font-family: inherit;
+            font-size: 0.95rem; /* スマホでズームされないサイズ */
+            padding: 0.8rem;
+            resize: none;
+            outline: none;
+            line-height: 1.6;
+        }
+
+        /* 全文表示レイヤー */
+        #full-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 5, 15, 0.98);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2.5rem;
+            z-index: 200;
+            backdrop-filter: blur(15px);
+        }
+
+        #full-text {
+            line-height: 2.2;
+            text-align: center;
+            font-size: 1.05rem;
+            margin-bottom: 3rem;
+            opacity: 0;
+            transition: opacity 0.8s;
+        }
+
+        .close-btn {
+            font-size: 0.85rem;
+            color: var(--text-color);
+            border: 1px solid rgba(232, 224, 208, 0.3);
+            padding: 0.5rem 2rem;
+            border-radius: 2rem;
+        }
+
+        /* お知らせトースト */
+        #toast {
+            position: fixed;
+            bottom: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(232, 224, 208, 0.1);
+            color: var(--text-color);
+            padding: 0.7rem 1.5rem;
+            border-radius: 2rem;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: 1s;
+            z-index: 150;
+            backdrop-filter: blur(5px);
+        }
+        #toast.active { opacity: 1; }
+
+        #star-dust {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(circle at 50% 50%, rgba(232, 224, 208, 0.03) 0%, transparent 70%);
+            z-index: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="star-dust"></div>
+    <a href="index_trial_bk_2.html" id="nav-exit">終了する</a>
+
+    <div id="container">
+        <div id="voice-display-container">
+            <div id="v1" class="voice-card"></div>
+            <div id="v2" class="voice-card"></div>
+        </div>
+        
+        <button class="btn" id="listen-btn">他の方の声を聴く</button>
+
+        <div id="input-section">
+            <div style="font-size: 0.7rem; color: rgba(232, 224, 208, 0.4);">あなたも、言葉を綴りますか？</div>
+            <textarea id="v-input" rows="3" maxlength="150" placeholder="静かな独り言を…"></textarea>
+            <button class="btn" id="submit-btn">言葉を綴る</button>
+        </div>
+    </div>
+
+    <!-- 全文表示用 -->
+    <div id="full-overlay">
+        <div id="full-text"></div>
+        <div class="close-btn" onclick="hideFull()">綴る画面へ戻る</div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://ubnqbpsbtmdplmlivxbj.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_b53Z6uC6UPLMbyy20-fWXg_FU_4uWEw';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const v1 = document.getElementById('v1');
+        const v2 = document.getElementById('v2');
+        const overlay = document.getElementById('full-overlay');
+        const fullTxt = document.getElementById('full-text');
+
+        function showT(m) {
+            const t = document.getElementById('toast');
+            t.textContent = m;
+            t.classList.add('active');
+            setTimeout(() => t.classList.remove('active'), 3500);
+        }
+
+        function showFull(c) {
+            fullTxt.textContent = c;
+            overlay.style.display = 'flex';
+            setTimeout(() => fullTxt.style.opacity = '1', 50);
+        }
+
+        function hideFull() {
+            fullTxt.style.opacity = '0';
+            setTimeout(() => overlay.style.display = 'none', 500);
+        }
+
+        async function fetchVoices() {
+            v1.classList.remove('visible');
+            v2.classList.remove('visible');
+            await new Promise(r => setTimeout(r, 600));
+
+            try {
+                const hour = new Date().getHours();
+                let minH = 0, maxH = 23;
+                if (hour >= 4 && hour < 11) { minH = 4; maxH = 11; }
+                else if (hour >= 23 || hour < 4) { minH = 23; maxH = 4; }
+
+                const { data } = await supabaseClient.rpc('get_random_voices_by_hour', {
+                    min_hour: minH, max_hour: maxH, lim: 2
+                });
+
+                let items = data || [];
+                if (items.length < 2) {
+                    const { data: fb } = await supabaseClient.from('voices').select('content').eq('is_private', false).limit(2);
+                    items = items.concat(fb || []).slice(0, 2);
+                }
+
+                const render = (el, c) => {
+                    if(!c) { el.style.display = 'none'; return; }
+                    el.style.display = 'block';
+                    if (c.length > 40) {
+                        const short = c.substring(0, 40) + '...';
+                        el.innerHTML = `<div>${short}</div><div class="more-indicator" onclick="showFull('${c}')">...もっと読む</div>`;
+                    } else {
+                        el.textContent = c;
+                    }
+                    setTimeout(() => el.classList.add('visible'), 100);
+                };
+
+                if(items[0]) render(v1, items[0].content);
+                if(items[1]) {
+                    await new Promise(r => setTimeout(r, 600));
+                    render(v2, items[1].content);
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function submitV() {
+            const val = document.getElementById('v-input').value.trim();
+            if(!val) return;
+            try {
+                const { error } = await supabaseClient.from('voices').insert([{ content: val, hour_of_day: new Date().getHours() }]);
+                if(!error) {
+                    document.getElementById('v-input').value = '';
+                    showT('言葉が綴られました。誰かの心に届くかもしれません。');
+                    fetchVoices();
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // イベントリスナー
+        document.getElementById('listen-btn').addEventListener('click', fetchVoices);
+        document.getElementById('submit-btn').addEventListener('click', submitV);
+        
+        window.addEventListener('load', fetchVoices);
+    </script>
+</body>
+</html>
